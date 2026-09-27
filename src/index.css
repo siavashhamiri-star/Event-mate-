@@ -1,1 +1,114 @@
 @import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg-ivory: #FAF7F2;
+    --bg-card: #FFFDF9;
+    --walnut-deep: #2C1E16;
+    --walnut-mid: #3E2723;
+    --walnut-muted: #6E5A4F;
+    --gold-24k: #C59B27;
+    --gold-light: #E6C258;
+    --gold-dark: #9A7411;
+    --rose-wedding: #E11D48;
+    --blossom-pink: #FFF1F2;
+  }
+
+  body {
+    font-family: 'Vazirmatn', 'Plus Jakarta Sans', sans-serif;
+    background-color: #FAF7F2;
+    background-image:
+      radial-gradient(circle at 12% 8%, rgba(251, 113, 133, 0.14) 0%, transparent 36%),
+      radial-gradient(circle at 88% 12%, rgba(212, 175, 55, 0.20) 0%, transparent 40%),
+      radial-gradient(circle at 50% 45%, rgba(254, 240, 138, 0.18) 0%, transparent 50%),
+      linear-gradient(180deg, #FFFDF9 0%, #FAF7F2 50%, #FFF7ED 100%);
+    color: #2C1E16;
+    overflow-x: hidden;
+    transition: background-color 0.25s ease, color 0.25s ease;
+  }
+
+  h1, h2, h3, .font-serif-luxury {
+    font-family: 'Vazirmatn', 'Cormorant Garamond', serif;
+  }
+
+  .font-mono-num {
+    font-family: 'JetBrains Mono', 'Vazirmatn', monospace;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@keyframes floatSparkle {
+  0%, 100% {
+    transform: translateY(0px) scale(1);
+    opacity: 0.85;
+  }
+  50% {
+    transform: translateY(-6px) scale(1.06);
+    opacity: 1;
+  }
+}
+
+.wedding-sparkle {
+  animation: floatSparkle 3.5s ease-in-out infinite;
+}
+
+.wedding-festive-header {
+  background: linear-gradient(135deg, #FFF9F5 0%, #FFF0F3 38%, #FEF9E7 72%, #FAF3E0 100%);
+}
+
+.wedding-gold-ribbon {
+  background: linear-gradient(90deg, #D4AF37 0%, #F43F5E 50%, #C59B27 100%);
+}
+
+/* Custom Royal Gold & Rose Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #FFF5F5;
+}
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #E11D48, #C59B27);
+  border-radius: 9999px;
+}
+
+/* Accessibility: High Contrast Mode for Low Vision */
+body.a11y-high-contrast {
+  background-color: #FFFFFF !important;
+  background-image: none !important;
+  color: #000000 !important;
+}
+body.a11y-high-contrast .luxury-card {
+  background-color: #FFFFFF !important;
+  border-color: #1E130D !important;
+  border-width: 2px !important;
+  box-shadow: none !important;
+}
+
+/* Accessibility: Readable Dyslexia / Low-Vision Spacing */
+body.a11y-readable-spacing {
+  letter-spacing: 0.03em !important;
+  line-height: 1.95 !important;
+  word-spacing: 0.1em !important;
+}
+
+/* Accessibility: ADHD Focus Mode */
+body.a11y-adhd-focus * {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.05s !important;
+}
+body.a11y-adhd-focus .adhd-dimmable {
+  opacity: 0.38;
+  filter: grayscale(35%);
+  transition: opacity 0.2s ease, filter 0.2s ease;
+}
+body.a11y-adhd-focus .adhd-dimmable:hover,
+body.a11y-adhd-focus .adhd-dimmable:focus-within,
+body.a11y-adhd-focus .adhd-spotlight {
+  opacity: 1 !important;
+  filter: none !important;
+  outline: 3px solid #C59B27 !important;
+  outline-offset: 4px;
+}

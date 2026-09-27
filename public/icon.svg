@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="ivoryBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FAF7F2" />
+      <stop offset="100%" stop-color="#F1EAE0" />
+    </linearGradient>
+    <linearGradient id="walnutFrame" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3E2723" />
+      <stop offset="100%" stop-color="#2C1E16" />
+    </linearGradient>
+    <linearGradient id="gold24k" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E6C258" />
+      <stop offset="50%" stop-color="#C59B27" />
+      <stop offset="100%" stop-color="#9A7411" />
+    </linearGradient>
+  </defs>
+  <!-- Royal Ivory Outer Canvas -->
+  <rect width="512" height="512" rx="112" fill="url(#ivoryBg)" />
+  <!-- Walnut Wood Royal Medallion -->
+  <rect x="36" y="36" width="440" height="440" rx="92" fill="url(#walnutFrame)" stroke="url(#gold24k)" stroke-width="10" />
+  <!-- Inner 24K Gold Filigree Ring -->
+  <rect x="62" y="62" width="388" height="388" rx="72" fill="none" stroke="url(#gold24k)" stroke-width="3" stroke-dasharray="12 6" opacity="0.85" />
+  <!-- Crown & Chandelier Crest -->
+  <path d="M146 230 L186 145 L256 205 L326 145 L366 230 Z" fill="url(#gold24k)" />
+  <circle cx="186" cy="128" r="12" fill="#E6C258" />
+  <circle cx="256" cy="112" r="16" fill="#E6C258" />
+  <circle cx="326" cy="128" r="12" fill="#E6C258" />
+  <!-- Pedestal & Banquet Platter Dome -->
+  <path d="M136 250 H376 C376 250 364 276 332 276 H180 C148 276 136 250 136 250 Z" fill="url(#gold24k)" />
+  <!-- Monogram EM VIP -->
+  <text x="256" y="362" text-anchor="middle" font-family="Georgia, serif" font-size="78" font-weight="bold" fill="url(#gold24k)" letter-spacing="4">EM</text>
+  <text x="256" y="412" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" font-weight="bold" fill="#FAF7F2" letter-spacing="10">VIP FBNM</text>
+</svg>
