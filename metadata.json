@@ -1,0 +1,6 @@
+{
+  "name": "EventMate VIP | ایونت‌مِیت",
+  "description": "سامانه هوشمند منوساز زنده، محاسبه‌گر آنی هزینه مجالس، رزرو تالار عروسی، باغ‌تالار و کترینگ تشریفات ایران و جهان — اکوسیستم آفرینش | شهر جدید نیومتاورسیتی جهان | توان استیج FBNM",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
