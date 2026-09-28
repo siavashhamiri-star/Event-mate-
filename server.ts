@@ -316,6 +316,10 @@ For ${guests} guests, we recommend the "Royal Gold Garden & Banquet" package wit
 • **اقساط ۶ ماهه با چک صیادی بنفش:** ماهانه ${sixMonthCheck.toLocaleString('fa-IR')} تومان (بدون کارمزد در شب‌های تخفیف‌دار Flash Dates).`;
 }
 
+// Smart in-memory cache and quota circuit-breaker so API calls never fail on 429/resource_exhausted
+const conciergeReplyCache = new Map<string, string>();
+let geminiQuotaCooldownUntil = 0;
+
 app.post('/api/concierge', async (req, res) => {
   const {
     query = '',
@@ -331,9 +335,20 @@ app.post('/api/concierge', async (req, res) => {
     String(lang),
   );
 
+  const cacheKey = `${lang}:${guestCount}:${budgetToman}:${String(query).trim().toLowerCase()}`;
+  const cached = conciergeReplyCache.get(cacheKey);
+  if (cached) {
+    return res.json({
+      source: 'automated-cache',
+      reply: cached,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
   // Automatically resolved from Server-Side Vault (process.env.GEMINI_API_KEY)
   const apiKey = resolveAutomatedGeminiKey();
-  if (!apiKey) {
+  if (!apiKey || Date.now() < geminiQuotaCooldownUntil) {
+    conciergeReplyCache.set(cacheKey, fallbackReply);
     return res.json({
       source: 'offline-auto-responder',
       reply: fallbackReply,
@@ -344,19 +359,26 @@ app.post('/api/concierge', async (req, res) => {
   try {
     const ai = new GoogleGenAI({apiKey});
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.8-flash',
       contents: `شما مشاور ارشد تشریفات مجالس و تالارهای لوکس در سامانه «EventMate VIP | ایونت‌مِیت (اکوسیستم آفرینش | شهر جدید نیومتاورسیتی جهان | توان استیج FBNM)» هستید.
 کاربر برای ${guestCount} نفر مهمان و بودجه حدودی ${budgetToman} تومان پرسیده است: "${query}".
 پاسخی کوتاه، محترمانه، اشرافی و دقیق به زبان ${lang} شامل پیشنهاد منو، هزینه هر نفر و شرایط اقساط چک صیادی بنویسید.`,
     });
 
-    const text = response.text?.trim();
+    const text = response.text?.trim() || fallbackReply;
+    conciergeReplyCache.set(cacheKey, text);
     return res.json({
-      source: text ? 'gemini-live' : 'offline-auto-responder',
-      reply: text || fallbackReply,
+      source: response.text ? 'gemini-live' : 'offline-auto-responder',
+      reply: text,
       timestamp: new Date().toISOString(),
     });
-  } catch {
+  } catch (err) {
+    // Activate 60-second automatic cooldown on resource_exhausted / 429 quota limits
+    const errMsg = err instanceof Error ? err.message : String(err);
+    if (errMsg.includes('resource_exhausted') || errMsg.includes('429') || errMsg.includes('Quota')) {
+      geminiQuotaCooldownUntil = Date.now() + 60000;
+    }
+    conciergeReplyCache.set(cacheKey, fallbackReply);
     return res.json({
       source: 'offline-auto-responder',
       reply: fallbackReply,

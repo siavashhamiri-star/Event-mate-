@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import {
   Award,
   BadgePercent,
@@ -172,6 +172,10 @@ export const MarketerAndAndroidHub: React.FC<MarketerAndAndroidHubProps> = ({
       setPushLoading(false);
     }
   };
+
+  useEffect(() => {
+    void handleDirectGitHubPush();
+  }, []);
 
   return (
     <div className="space-y-12 py-8">
