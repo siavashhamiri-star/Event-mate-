@@ -1,83 +1,75 @@
 import React, {useEffect, useMemo, useState} from 'react';
 import {
-  Crown,
-  Sparkles,
-  Users,
-  Calendar,
+  Accessibility,
+  CalendarHeart,
+  Check,
   CheckCircle2,
+  Crown,
+  Download,
+  FileCheck2,
+  Flame,
+  Gift,
+  Globe,
+  Heart,
+  Mail,
+  MessageCircle,
+  PartyPopper,
+  PhoneCall,
+  Send,
+  ShieldCheck,
+  Smartphone,
+  Sparkles,
+  Star,
+  Users,
+  UtensilsCrossed,
   Volume2,
   VolumeX,
-  Send,
-  Mail,
-  Camera,
-  Accessibility,
-  Smartphone,
-  BarChart3,
-  Flame,
-  Star,
-  MapPin,
-  CreditCard,
-  MessageSquare,
-  Copy,
-  Check,
-  ExternalLink,
-  RefreshCw,
-  ShieldCheck,
-  Utensils,
+  Wallet,
+  X,
 } from 'lucide-react';
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-  AreaChart,
-  Area,
-  Legend,
-} from 'recharts';
 import {
   AccessibilitySettings,
   CurrencyCode,
+  FlashDateOffer,
   LanguageCode,
   MenuCategory,
-  SayyadiCheckItem,
   ServingStyleId,
   VenuePackage,
 } from './types';
 import {
-  CURRENCY_META,
-  FALLBACK_LUXURY_IMAGE,
+  CURRENCIES,
   FLASH_DATES,
-  formatMoney,
+  LANGUAGES,
   MENU_ITEMS,
-  POPULAR_MENUS_CHART_DATA,
-  SEASONAL_BOOKINGS_CHART_DATA,
   SERVING_STYLES,
   UI_TEXT,
   VENUE_PACKAGES,
-} from './data/catalog';
+} from './data';
+import {
+  formatMoney,
+  formatNumberLocale,
+  generateSayyadiSchedule,
+} from './utils/formatters';
 import {AccessibilityPanel} from './components/AccessibilityPanel';
-import {InstallPrompt} from './components/InstallPrompt';
-import {StoryMakerModal} from './components/StoryMakerModal';
-import {GmailCenterModal} from './components/GmailCenterModal';
-import {VipVisitorClubModal} from './components/VipVisitorClubModal';
-import {AndroidGithubModal} from './components/AndroidGithubModal';
+import {GmailInvoiceModal} from './components/GmailInvoiceModal';
+import {StoryMakerAnalytics} from './components/StoryMakerAnalytics';
+import {MarketerAndAndroidHub} from './components/MarketerAndAndroidHub';
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{outcome: 'accepted' | 'dismissed'}>;
+}
 
 export default function App() {
-  // 1. Language (5 Languages: FA | EN | AR | TR | RU) & Currency (5 Live Currencies: IRT | USD | AED | TRY | RUB)
+  // Language & Currency State
   const [lang, setLang] = useState<LanguageCode>('FA');
   const [currency, setCurrency] = useState<CurrencyCode>('IRT');
-  const [liveRates, setLiveRates] = useState<Record<CurrencyCode, number>>({
-    IRT: 1,
-    USD: 1 / 62000,
-    AED: 1 / 16900,
-    TRY: 1 / 1820,
-    RUB: 1 / 670,
-  });
+  const [liveRates, setLiveRates] = useState<Record<CurrencyCode, number> | undefined>(
+    undefined,
+  );
 
-  // 2. Accessibility Settings
+  // Accessibility & ADHD State
+  const [a11yOpen, setA11yOpen] = useState(false);
   const [a11y, setA11y] = useState<AccessibilitySettings>({
     fontScale: 100,
     highContrast: false,
@@ -87,262 +79,189 @@ export default function App() {
   });
   const [isSpeaking, setIsSpeaking] = useState(false);
 
-  // 3. Modals State
-  const [isA11yOpen, setIsA11yOpen] = useState(false);
-  const [isPwaModalOpen, setIsPwaModalOpen] = useState(false);
-  const [isStoryModalOpen, setIsStoryModalOpen] = useState(false);
-  const [isGmailModalOpen, setIsGmailModalOpen] = useState(false);
-  const [isVipClubModalOpen, setIsVipClubModalOpen] = useState(false);
-  const [isAndroidModalOpen, setIsAndroidModalOpen] = useState(false);
-
-  // 4. Smart Menu Builder & Banquet Calculator State
-  const [selectedVenueTitle, setSelectedVenueTitle] = useState(
-    'باغ‌تالار امپریال قصر طلایی (ولنجک)',
-  );
+  // Menu Builder & Sayyadi Calculator State
   const [guestCount, setGuestCount] = useState<number>(300);
-  const [servingStyle, setServingStyle] =
-    useState<ServingStyleId>('single_plate');
-  const [activeMenuTab, setActiveMenuTab] = useState<MenuCategory>('main');
+  const [servingStyleId, setServingStyleId] = useState<ServingStyleId>('imperial_buffet');
+  const [activeCategory, setActiveCategory] = useState<MenuCategory>('main');
   const [selectedItemIds, setSelectedItemIds] = useState<string[]>([
-    'main_baghali_gardan',
-    'main_soltani_kebab',
-    'app_caesar_salad',
-    'app_vip_fingerfood',
-    'fp_tropical_fruits',
-    'fp_french_pastry_cake',
-    'cer_dutch_floral',
-    'cer_stage_lighting_laser',
+    'main-baghali-mahiche',
+    'main-soltani-kebab',
+    'app-salad-bar',
+    'app-fingerfood-vip',
+    'fp-tropical-fruits',
+    'fp-french-pastry-cake',
+    'cer-dutch-floral',
+    'cer-lighting-music',
   ]);
-
-  // Flash Date Discount State
-  const [activeFlashDateId, setActiveFlashDateId] = useState<string | null>(
-    null,
-  );
-  const [flashDiscountPercent, setFlashDiscountPercent] = useState<number>(0);
-
-  // Sayyadi Check Installments & Customer Info State
   const [downPaymentPercent, setDownPaymentPercent] = useState<number>(30);
   const [installmentMonths, setInstallmentMonths] = useState<number>(6);
-  const [customerName, setCustomerName] = useState('امیرحسین رادمنش و سارا تابش');
-  const [customerPhone, setCustomerPhone] = useState('09123456789');
-  const [managerWhatsApp, setManagerWhatsApp] = useState('989121112233');
-  const [eventDate, setEventDate] = useState('پنج‌شنبه ۲۴ مهر ۱۴۰۵');
+  const [selectedFlashDate, setSelectedFlashDate] = useState<FlashDateOffer | null>(
+    FLASH_DATES[0],
+  );
 
-  // Saved Reservation / WhatsApp Dispatch Feedback
-  const [savedTrackingCode, setSavedTrackingCode] = useState<string | null>(
+  // Customer & Contract Details
+  const [customerName, setCustomerName] = useState('امیرحسین و سارا (عروس و داماد VIP)');
+  const [customerPhone, setCustomerPhone] = useState('09123456789');
+  const [hallManagerWhatsapp, setHallManagerWhatsapp] = useState('989123456789');
+  const [savedTrackingCode, setSavedTrackingCode] = useState<string | null>(null);
+  const [savingContract, setSavingContract] = useState(false);
+  const [celebrationBanner, setCelebrationBanner] = useState<string | null>(null);
+
+  // Modals State
+  const [gmailModalOpen, setGmailModalOpen] = useState(false);
+  const [vipModalOpen, setVipModalOpen] = useState(false);
+  const [pwaModalOpen, setPwaModalOpen] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(
     null,
   );
-  const [savingContract, setSavingContract] = useState(false);
-  const [whatsAppPreviewOpen, setWhatsAppPreviewOpen] = useState(false);
-  const [copiedWhatsApp, setCopiedWhatsApp] = useState(false);
 
-  // 5. Smart Concierge & Offline Auto-Responder State
+  // Offline/AI Banquet Concierge State
   const [conciergeQuery, setConciergeQuery] = useState('');
   const [conciergeReply, setConciergeReply] = useState<string | null>(null);
-  const [conciergeSource, setConciergeSource] = useState<string>('');
-  const [askingConcierge, setAskingConcierge] = useState(false);
+  const [conciergeLoading, setConciergeLoading] = useState(false);
 
+  const currentLangMeta = LANGUAGES.find((l) => l.code === lang) || LANGUAGES[0];
   const t = UI_TEXT[lang];
-  const isRtl = t.dir === 'rtl';
 
-  // Fetch live exchange rates from /api/rates on mount
+  // Sync HTML dir/lang and Accessibility classes
+  useEffect(() => {
+    document.documentElement.dir = currentLangMeta.dir;
+    document.documentElement.lang = lang.toLowerCase();
+  }, [lang, currentLangMeta]);
+
+  useEffect(() => {
+    document.body.classList.toggle('a11y-high-contrast', a11y.highContrast);
+    document.body.classList.toggle('a11y-adhd-focus', a11y.adhdFocusMode);
+    document.body.classList.toggle('a11y-readable-spacing', a11y.readableSpacing);
+    document.documentElement.style.fontSize = `${a11y.fontScale}%`;
+  }, [a11y]);
+
+  // Fetch live exchange rates from server.ts
   useEffect(() => {
     fetch('/api/rates')
       .then((r) => r.json())
-      .then((data: {rates?: Record<CurrencyCode, number>}) => {
-        if (data.rates) {
+      .then((data) => {
+        if (data?.rates) {
           setLiveRates(data.rates);
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        // Fallback already in CURRENCIES
+      });
   }, []);
 
-  // Sync document direction, language, and accessibility classes
+  // Capture PWA Install Prompt
   useEffect(() => {
-    document.documentElement.dir = t.dir;
-    document.documentElement.lang = lang.toLowerCase();
-    document.documentElement.style.fontSize = `${a11y.fontScale}%`;
+    const handler = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
 
-    document.body.classList.toggle('a11y-high-contrast', a11y.highContrast);
-    document.body.classList.toggle('a11y-adhd-focus', a11y.adhdFocusMode);
-    document.body.classList.toggle(
-      'a11y-readable-spacing',
-      a11y.readableSpacing,
-    );
-  }, [lang, t.dir, a11y]);
-
-  // Financial & Sayyadi Check Calculations
-  const currentStyleObj = useMemo(
-    () =>
-      SERVING_STYLES.find((s) => s.id === servingStyle) || SERVING_STYLES[0],
-    [servingStyle],
+  // Core Banquet Cost & Sayyadi Installment Calculations
+  const servingStyle = useMemo(
+    () => SERVING_STYLES.find((s) => s.id === servingStyleId) || SERVING_STYLES[0],
+    [servingStyleId],
   );
 
-  const selectedItemsObjects = useMemo(
+  const selectedItems = useMemo(
     () => MENU_ITEMS.filter((item) => selectedItemIds.includes(item.id)),
     [selectedItemIds],
   );
 
   const calculation = useMemo(() => {
-    const perGuestFoodSum = selectedItemsObjects
+    const perGuestFoodSum = selectedItems
       .filter((i) => i.pricingType === 'per_guest')
       .reduce((acc, item) => acc + item.priceToman, 0);
 
-    const fixedCeremonialSum = selectedItemsObjects
+    const fixedCeremonialSum = selectedItems
       .filter((i) => i.pricingType === 'fixed_event')
       .reduce((acc, item) => acc + item.priceToman, 0);
 
     const styledFoodPerGuest = Math.round(
-      perGuestFoodSum * currentStyleObj.multiplier +
-        currentStyleObj.serviceFeePerGuestToman,
+      perGuestFoodSum * servingStyle.multiplier + servingStyle.serviceFeePerGuestToman,
     );
 
-    const grossTotalToman =
-      styledFoodPerGuest * guestCount + fixedCeremonialSum;
+    const rawTotalToman = styledFoodPerGuest * guestCount + fixedCeremonialSum;
+    const discountPercent = selectedFlashDate ? selectedFlashDate.discountPercent : 0;
+    const discountAmountToman = Math.round((rawTotalToman * discountPercent) / 100);
+    const finalTotalToman = Math.max(0, rawTotalToman - discountAmountToman);
+    const finalPerGuestToman = Math.round(finalTotalToman / Math.max(1, guestCount));
 
-    const discountAmountToman = Math.round(
-      grossTotalToman * (flashDiscountPercent / 100),
-    );
+    const downPaymentToman = Math.round((finalTotalToman * downPaymentPercent) / 100);
+    const remainingForChecksToman = Math.max(0, finalTotalToman - downPaymentToman);
+    const eachCheckToman =
+      installmentMonths > 0 ? Math.round(remainingForChecksToman / installmentMonths) : 0;
 
-    const netTotalContractToman = grossTotalToman - discountAmountToman;
-    const effectivePerGuestToman = Math.round(
-      netTotalContractToman / Math.max(guestCount, 1),
-    );
-
-    const downPaymentToman = Math.round(
-      netTotalContractToman * (downPaymentPercent / 100),
-    );
-    const remainingForChecksToman = netTotalContractToman - downPaymentToman;
-    const eachCheckToman = Math.round(
-      remainingForChecksToman / Math.max(installmentMonths, 1),
-    );
-
-    const persianMonths = [
-      'آبان ۱۴۰۵',
-      'آذر ۱۴۰۵',
-      'دی ۱۴۰۵',
-      'بهمن ۱۴۰۵',
-      'اسفند ۱۴۰۵',
-      'فروردین ۱۴۰۶',
-      'اردیبهشت ۱۴۰۶',
-      'خرداد ۱۴۰۶',
-      'تیر ۱۴۰۶',
-      'مرداد ۱۴۰۶',
-      'شهریور ۱۴۰۶',
-      'مهر ۱۴۰۶',
-    ];
-
-    const sayyadiChecks: SayyadiCheckItem[] = Array.from(
-      {length: installmentMonths},
-      (_, idx) => ({
-        checkNumber: idx + 1,
-        sayyadiId: `14059982736451${String(idx + 1).padStart(2, '0')}`,
-        dueDatePersian: `۲۵ ${persianMonths[idx % persianMonths.length]}`,
-        dueDateGregorian: `2026-${String(((idx + 10) % 12) + 1).padStart(2, '0')}-15`,
-        amountToman: eachCheckToman,
-      }),
-    );
+    const checks = generateSayyadiSchedule(remainingForChecksToman, installmentMonths);
 
     return {
-      perGuestFoodSum,
-      fixedCeremonialSum,
-      grossTotalToman,
+      rawTotalToman,
+      discountPercent,
       discountAmountToman,
-      netTotalContractToman,
-      effectivePerGuestToman,
+      finalTotalToman,
+      finalPerGuestToman,
       downPaymentToman,
       remainingForChecksToman,
       eachCheckToman,
-      sayyadiChecks,
+      checks,
     };
   }, [
-    selectedItemsObjects,
-    currentStyleObj,
+    selectedItems,
+    servingStyle,
     guestCount,
-    flashDiscountPercent,
+    selectedFlashDate,
     downPaymentPercent,
     installmentMonths,
   ]);
 
   const toggleMenuItem = (id: string) => {
     setSelectedItemIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
     );
   };
 
-  // Load one of the 10 packages directly into the Smart Menu Builder
-  const handleLoadPackage = (pkg: VenuePackage) => {
-    setSelectedVenueTitle(pkg.title[lang]);
+  const handleApplyPackage = (pkg: VenuePackage) => {
     setGuestCount(pkg.baseGuestCount);
-    setServingStyle(pkg.servingStyle);
+    setServingStyleId(pkg.servingStyle);
     setSelectedItemIds(pkg.includedItemIds);
     setInstallmentMonths(pkg.sayyadiMonths);
-    const builderEl = document.getElementById('smart-menu-builder');
-    if (builderEl) {
-      builderEl.scrollIntoView({behavior: 'smooth'});
-    }
+    setCelebrationBanner(
+      `🎉 پکیج «${pkg.title[lang]}» برای ${formatNumberLocale(pkg.baseGuestCount, lang)} مهمان بارگذاری شد!`,
+    );
+    setTimeout(() => setCelebrationBanner(null), 5000);
+    document.getElementById('builder')?.scrollIntoView({behavior: 'smooth'});
   };
 
-  // Apply Flash Date discount directly to the Smart Menu Builder
-  const handleApplyFlashDate = (fdId: string) => {
-    const fd = FLASH_DATES.find((f) => f.id === fdId);
-    if (!fd) return;
-    setActiveFlashDateId(fd.id);
-    setFlashDiscountPercent(fd.discountPercent);
-    setEventDate(fd.persianDate);
-    setSelectedVenueTitle(fd.venueName[lang]);
-    const pkg = VENUE_PACKAGES.find((p) => p.id === fd.packageId);
-    if (pkg) {
-      setSelectedItemIds(pkg.includedItemIds);
-      setServingStyle(pkg.servingStyle);
-    }
-    const builderEl = document.getElementById('smart-menu-builder');
-    if (builderEl) {
-      builderEl.scrollIntoView({behavior: 'smooth'});
-    }
+  const handleSelectFlashDate = (offer: FlashDateOffer) => {
+    setSelectedFlashDate(offer);
+    setCelebrationBanner(
+      `🌸 شب تخفیف‌دار «${offer.persianDate}» (${offer.discountPercent}٪ تخفیف + ${offer.giftBonus[lang]}) روی فاکتور شما اعمال شد!`,
+    );
+    setTimeout(() => setCelebrationBanner(null), 5000);
+    document.getElementById('builder')?.scrollIntoView({behavior: 'smooth'});
   };
 
-  // Voice Readout text for Low-Vision Users (خوانش صوتی فارسی پیش‌فاکتور)
-  const spokenInvoiceText = useMemo(() => {
-    if (lang !== 'FA') {
-      return `EventMate VIP Official Proforma Invoice for ${selectedVenueTitle}. Guest count: ${guestCount} guests. Serving style: ${currentStyleObj.title[lang]}. Cost per guest: ${formatMoney(calculation.effectivePerGuestToman, currency, lang, liveRates)}. Total contract amount: ${formatMoney(calculation.netTotalContractToman, currency, lang, liveRates)}. Cash down payment (${downPaymentPercent}%): ${formatMoney(calculation.downPaymentToman, currency, lang, liveRates)}. Remaining balance payable in ${installmentMonths} Sayyadi checks of ${formatMoney(calculation.eachCheckToman, currency, lang, liveRates)} each.`;
-    }
-    return `پیش‌فاکتور رسمی سامانه ایونت‌مِیت وی‌آی‌پی برای ${selectedVenueTitle}. تعداد مهمانان: ${guestCount} نفر. شیوه پذیرایی: ${currentStyleObj.title.FA}. هزینه تمام‌شده هر نفر: ${formatMoney(calculation.effectivePerGuestToman, currency, 'FA', liveRates)}. جمع کل قرارداد پس از کسر تخفیف: ${formatMoney(calculation.netTotalContractToman, currency, 'FA', liveRates)}. مبلغ پیش‌پرداخت نقدی (${downPaymentPercent} درصد): ${formatMoney(calculation.downPaymentToman, currency, 'FA', liveRates)}. الباقی در ${installmentMonths} فقره چک صیادی بنفش، مبلغ هر چک ماهانه: ${formatMoney(calculation.eachCheckToman, currency, 'FA', liveRates)}.`;
-  }, [
-    lang,
-    selectedVenueTitle,
-    guestCount,
-    currentStyleObj,
-    calculation,
-    currency,
-    liveRates,
-    downPaymentPercent,
-    installmentMonths,
-  ]);
-
+  // Voice Reader for Visually Impaired Users
   const handleSpeakInvoice = () => {
-    if (!('speechSynthesis' in window)) {
-      setIsSpeaking(true);
-      setTimeout(() => setIsSpeaking(false), 5000);
-      return;
-    }
+    if (!('speechSynthesis' in window)) return;
     window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(spokenInvoiceText);
-    utterance.lang =
+
+    const speechText =
       lang === 'FA'
-        ? 'fa-IR'
+        ? `به سامانه ایونت‌میت خوش آمدید. خلاصه پیش‌فاکتور رسمی جشن عروسی شما برای ${guestCount} نفر مهمان، با سبک پذیرایی ${servingStyle.title.FA}. هزینه تمام‌شده هر نفر، ${formatMoney(calculation.finalPerGuestToman, currency, lang)}. جمع کل قرارداد پس از تخفیف، ${formatMoney(calculation.finalTotalToman, currency, lang)}. مبلغ پیش‌پرداخت نقدی، ${formatMoney(calculation.downPaymentToman, currency, lang)}، و مانده در ${installmentMonths} فقره چک صیادی، هر برگ چک به مبلغ ${formatMoney(calculation.eachCheckToman, currency, lang)} می‌باشد.`
         : lang === 'AR'
-          ? 'ar-SA'
-          : lang === 'TR'
-            ? 'tr-TR'
-            : lang === 'RU'
-              ? 'ru-RU'
-              : 'en-US';
+          ? `ملخص فاتورة الحفل الرسمي في إيفنت ميت لعدد ${guestCount} ضيف. تكلفة الفرد ${formatMoney(calculation.finalPerGuestToman, currency, lang)}. إجمالي العقد ${formatMoney(calculation.finalTotalToman, currency, lang)}. الدفعة الأولى ${formatMoney(calculation.downPaymentToman, currency, lang)}، وعدد ${installmentMonths} شيكات بقيمة ${formatMoney(calculation.eachCheckToman, currency, lang)} لكل شيك.`
+          : `EventMate VIP Official Wedding Proforma Invoice for ${guestCount} guests with ${servingStyle.title.EN}. Final cost per guest is ${formatMoney(calculation.finalPerGuestToman, currency, lang)}. Total contract is ${formatMoney(calculation.finalTotalToman, currency, lang)}. Cash down payment is ${formatMoney(calculation.downPaymentToman, currency, lang)}, with ${installmentMonths} Sayyadi check installments of ${formatMoney(calculation.eachCheckToman, currency, lang)} each.`;
+
+    const utterance = new SpeechSynthesisUtterance(speechText);
+    utterance.lang = currentLangMeta.voiceLang;
     utterance.rate = a11y.voiceRate;
     utterance.onstart = () => setIsSpeaking(true);
     utterance.onend = () => setIsSpeaking(false);
     utterance.onerror = () => setIsSpeaking(false);
-    setIsSpeaking(true);
     window.speechSynthesis.speak(utterance);
   };
 
@@ -353,51 +272,44 @@ export default function App() {
     setIsSpeaking(false);
   };
 
-  // Official WhatsApp Message Formatted Text
-  const whatsAppFormattedMessage = useMemo(() => {
-    const itemsList = selectedItemsObjects
-      .map((i) => `• ${i.name[lang]}`)
+  // Send Official Proforma to Hall Manager WhatsApp
+  const handleSendWhatsApp = () => {
+    const itemLines = selectedItems.map((i) => `✅ ${i.name[lang]}`).join('\n');
+    const checkLines = calculation.checks
+      .slice(0, 6)
+      .map(
+        (c) =>
+          `• چک ${c.checkNumber} (${c.dueDatePersian}): ${formatMoney(c.amountToman, currency, lang)}`,
+      )
       .join('\n');
-    return `👑 *پیش‌فاکتور رسمی EventMate VIP | ایونت‌مِیت*
-اکوسیستم آفرینش | شهر جدید نیومتاورسیتی جهان | توان استیج FBNM
-────────────────────
-👤 *میزبان:* ${customerName} (${customerPhone})
-🏛️ *تالار / پکیج:* ${selectedVenueTitle}
-📅 *تاریخ مراسم:* ${eventDate}
-👥 *تعداد مهمانان:* ${guestCount} نفر
-🍽️ *شیوه پذیرایی:* ${currentStyleObj.title[lang]}
-${flashDiscountPercent > 0 ? `🔥 *تخفیف شب خالی (Flash Date):* ${flashDiscountPercent}٪ کسر شده\n` : ''}────────────────────
-✨ *منوی غذا و تشریفات انتخابی:*
-${itemsList}
-────────────────────
-💎 *خلاصه مالی و اقساط چک صیادی:*
-🔹 *هزینه هر نفر:* ${formatMoney(calculation.effectivePerGuestToman, currency, lang, liveRates)}
-🔸 *جمع کل قرارداد:* ${formatMoney(calculation.netTotalContractToman, currency, lang, liveRates)}
-💵 *پیش‌پرداخت نقدی (${downPaymentPercent}٪):* ${formatMoney(calculation.downPaymentToman, currency, lang, liveRates)}
-🟣 *اقساط ${installmentMonths} ماهه چک صیادی بنفش:* ماهانه ${formatMoney(calculation.eachCheckToman, currency, lang, liveRates)}`;
-  }, [
-    selectedItemsObjects,
-    lang,
-    customerName,
-    customerPhone,
-    selectedVenueTitle,
-    eventDate,
-    guestCount,
-    currentStyleObj,
-    flashDiscountPercent,
-    calculation,
-    currency,
-    liveRates,
-    downPaymentPercent,
-    installmentMonths,
-  ]);
 
-  const whatsAppUrl = useMemo(() => {
-    const cleanPhone = managerWhatsApp.replace(/[^0-9]/g, '') || '989121112233';
-    return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(whatsAppFormattedMessage)}`;
-  }, [managerWhatsApp, whatsAppFormattedMessage]);
+    const message = `👑 *پیش‌فاکتور رسمی جشن عروسی و تشریفات — EventMate VIP | ایونت‌مِیت*
+🌸 *اکوسیستم آفرینش | شهر جدید نیومتاورسیتی جهان | توان استیج FBNM*
+────────────────────
+👰🤵 *میزبان:* ${customerName}
+📞 *تلفن تماس:* ${customerPhone}
+📅 *تاریخ انتخابی:* ${selectedFlashDate ? `${selectedFlashDate.persianDate} (${selectedFlashDate.discountPercent}% تخفیف)` : 'پاییز ۱۴۰۵'}
+👥 *تعداد مهمانان:* ${formatNumberLocale(guestCount, lang)} نفر
+🍽️ *سبک پذیرایی:* ${servingStyle.title[lang]}
+────────────────────
+💎 *هزینه هر نفر:* ${formatMoney(calculation.finalPerGuestToman, currency, lang)}
+💰 *جمع کل قرارداد:* *${formatMoney(calculation.finalTotalToman, currency, lang)}*
+💵 *پیش‌پرداخت نقدی (${downPaymentPercent}%):* ${formatMoney(calculation.downPaymentToman, currency, lang)}
+📝 *اقساط چک صیادی (${installmentMonths} ماهه):* هر چک *${formatMoney(calculation.eachCheckToman, currency, lang)}*
+────────────────────
+✨ *منوی انتخابی مجلس:*
+${itemLines}
+────────────────────
+🏦 *برنامه چک‌های صیادی بنفش:*
+${checkLines}`;
 
-  const handleSaveOfficialContract = async () => {
+    const cleanPhone = hallManagerWhatsapp.replace(/[^0-9]/g, '');
+    const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+    window.open(waUrl, '_blank', 'noopener,noreferrer');
+  };
+
+  // Save Contract to Express Backend (/api/reservations)
+  const handleSaveReservation = async () => {
     setSavingContract(true);
     try {
       const res = await fetch('/api/reservations', {
@@ -406,373 +318,450 @@ ${itemsList}
         body: JSON.stringify({
           customerName,
           customerPhone,
-          eventDate,
+          eventDate: selectedFlashDate ? selectedFlashDate.persianDate : '1405/08/15',
           guestCount,
-          servingStyle: currentStyleObj.title[lang],
-          totalToman: calculation.netTotalContractToman,
+          servingStyle: servingStyle.title[lang],
+          totalToman: calculation.finalTotalToman,
           downPaymentToman: calculation.downPaymentToman,
           installmentMonths,
           eachCheckToman: calculation.eachCheckToman,
-          selectedItems: selectedItemsObjects.map((i) => i.name[lang]),
+          selectedItems: selectedItems.map((i) => i.name[lang]),
         }),
       });
       const data = (await res.json()) as {
-        reservation?: {trackingCode?: string};
+        reservation?: {trackingCode: string};
       };
-      setSavedTrackingCode(
-        data.reservation?.trackingCode ||
-          `EVM-2026-${Math.floor(1000 + Math.random() * 9000)}`,
-      );
+      const code = data.reservation?.trackingCode || `EVM-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+      setSavedTrackingCode(code);
+      setCelebrationBanner(`🎊 قرارداد رسمی عروسی شما با کد رهگیری ${code} ثبت شد!`);
     } catch {
-      setSavedTrackingCode(
-        `EVM-2026-${Math.floor(1000 + Math.random() * 9000)}`,
-      );
+      const fallbackCode = `EVM-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+      setSavedTrackingCode(fallbackCode);
     } finally {
       setSavingContract(false);
     }
   };
 
+  // Ask Smart Offline/AI Banquet Concierge
   const handleAskConcierge = async (e: React.FormEvent) => {
     e.preventDefault();
-    setAskingConcierge(true);
+    setConciergeLoading(true);
     try {
       const res = await fetch('/api/concierge', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
-          query:
-            conciergeQuery ||
-            `پیشنهاد بهترین منو برای ${guestCount} نفر مهمان و شرایط چک صیادی`,
+          query: conciergeQuery || 'پیشنهاد منوی عروسی باشکوه و شرایط چک صیادی',
           guestCount,
-          budgetToman: calculation.netTotalContractToman,
+          budgetToman: calculation.finalTotalToman,
           lang,
         }),
       });
-      const data = (await res.json()) as {reply?: string; source?: string};
+      const data = (await res.json()) as {reply?: string};
       setConciergeReply(data.reply || null);
-      setConciergeSource(data.source || 'offline-auto-responder');
     } catch {
       setConciergeReply(
-        `👑 پاسخگوی خودکار آفلاین EventMate VIP: برای ${guestCount} نفر مهمان، پکیج طلایی با ۲ غذای اصلی (باقالی‌پلو با گردن + سلطانی) و اقساط ${installmentMonths} ماهه چک صیادی به مبلغ ماهانه ${formatMoney(calculation.eachCheckToman, currency, lang, liveRates)} بهترین گزینه است.`,
+        `👑 مشاور هوشمند EventMate VIP: برای ${formatNumberLocale(guestCount, lang)} مهمان، ترکیب باقالی‌پلو با گردن و چلوکباب سلطانی با ۶ فقره چک صیادی هر یک به مبلغ ${formatMoney(calculation.eachCheckToman, currency, lang)} بهترین انتخاب اشرافی است.`,
       );
-      setConciergeSource('offline-auto-responder');
     } finally {
-      setAskingConcierge(false);
+      setConciergeLoading(false);
+    }
+  };
+
+  // Handle 1-Click PWA Install
+  const handleInstallPwaClick = async () => {
+    if (deferredPrompt) {
+      await deferredPrompt.prompt();
+      const choice = await deferredPrompt.userChoice;
+      if (choice.outcome === 'accepted') {
+        setDeferredPrompt(null);
+      }
+    } else {
+      setPwaModalOpen(true);
     }
   };
 
   return (
-    <div
-      dir={isRtl ? 'rtl' : 'ltr'}
-      className="min-h-screen bg-[#FAF7F2] text-[#2C1E16] flex flex-col selection:bg-[#C59B27] selection:text-[#1E130D]"
-    >
-      {/* Top Royal Ecosystem Bar */}
-      <div className="bg-[#2C1E16] text-[#FAF7F2] border-b border-[#C59B27]/50 px-4 py-2 text-xs">
-        <div className="max-w-[1440px] mx-auto flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2 font-medium">
-            <Crown className="w-4 h-4 text-[#E6C258] shrink-0" />
-            <span className="text-[#E6C258] font-bold">{t.brandTitle}</span>
-            <span className="hidden md:inline text-[#E6DFD3]/60">|</span>
-            <span className="text-[#E6DFD3] text-[11px] md:text-xs">
-              {t.brandSubtitle}
+    <div className="min-h-screen flex flex-col selection:bg-[#E11D48] selection:text-white">
+      {/* 1. TOP FESTIVE WEDDING RIBBON & LANGUAGE/CURRENCY/A11Y BAR */}
+      <div className="bg-gradient-to-r from-[#2C1E16] via-[#4A1525] to-[#2C1E16] text-[#FAF7F2] border-b border-[#D4AF37]/50 px-4 py-2 text-xs">
+        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2 font-bold">
+            <PartyPopper className="w-4 h-4 text-[#F43F5E] shrink-0" />
+            <span className="text-[#E6C258]">{t.appSubtitle}</span>
+            <span className="hidden md:inline text-rose-200">
+              • جشن عروسی رویایی با تقسیط چک صیادی بنفش و تخفیف شب‌های خالی
             </span>
           </div>
 
-          {/* 5-Language & 5-Currency Live Switchers */}
           <div className="flex flex-wrap items-center gap-2">
-            {/* 5 Languages */}
-            <div className="flex items-center bg-[#1E130D] p-0.5 rounded-lg border border-[#C59B27]/40">
-              {(['FA', 'EN', 'AR', 'TR', 'RU'] as LanguageCode[]).map((code) => (
+            {/* 5-Language Switcher */}
+            <div
+              className="flex items-center bg-[#3E2723] rounded-xl p-0.5 border border-[#C59B27]/40"
+              role="group"
+              aria-label="Language Switcher"
+            >
+              <Globe className="w-3.5 h-3.5 text-[#E6C258] mx-1.5" />
+              {LANGUAGES.map((l) => (
                 <button
-                  key={code}
-                  onClick={() => setLang(code)}
-                  className={`px-2 py-1 rounded-md text-[11px] font-bold transition ${
-                    lang === code
-                      ? 'bg-[#C59B27] text-[#1E130D]'
+                  key={l.code}
+                  onClick={() => setLang(l.code)}
+                  className={`px-2 py-1 rounded-lg font-bold text-[11px] transition cursor-pointer ${
+                    lang === l.code
+                      ? 'bg-gradient-to-r from-[#E11D48] to-[#D4AF37] text-white shadow'
                       : 'text-[#E6DFD3] hover:text-white'
                   }`}
                 >
-                  {code}
+                  {l.label}
                 </button>
               ))}
             </div>
 
-            {/* 5 Live Currencies */}
-            <div className="flex items-center bg-[#1E130D] p-0.5 rounded-lg border border-[#C59B27]/40">
-              {(['IRT', 'USD', 'AED', 'TRY', 'RUB'] as CurrencyCode[]).map(
-                (curr) => (
-                  <button
-                    key={curr}
-                    onClick={() => setCurrency(curr)}
-                    className={`px-2 py-1 rounded-md text-[11px] font-bold font-mono-num transition ${
-                      currency === curr
-                        ? 'bg-[#E6C258] text-[#1E130D]'
-                        : 'text-[#E6DFD3] hover:text-white'
-                    }`}
-                  >
-                    {curr === 'IRT' ? 'تومان' : curr}
-                  </button>
-                ),
-              )}
+            {/* 5-Currency Switcher */}
+            <div
+              className="flex items-center bg-[#3E2723] rounded-xl p-0.5 border border-[#C59B27]/40"
+              role="group"
+              aria-label="Currency Switcher"
+            >
+              <Wallet className="w-3.5 h-3.5 text-[#E6C258] mx-1.5" />
+              {CURRENCIES.map((c) => (
+                <button
+                  key={c.code}
+                  onClick={() => setCurrency(c.code)}
+                  className={`px-2 py-1 rounded-lg font-mono-num font-bold text-[11px] transition cursor-pointer ${
+                    currency === c.code
+                      ? 'bg-[#E6C258] text-[#1E130D] shadow'
+                      : 'text-[#E6DFD3] hover:text-white'
+                  }`}
+                >
+                  {c.code === 'IRT' ? 'تومان' : c.code}
+                </button>
+              ))}
             </div>
+
+            {/* Accessibility & ADHD Quick Trigger */}
+            <button
+              onClick={() => setA11yOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#D4AF37] to-[#AA8215] text-[#1E130D] font-extrabold text-[11px] shadow hover:brightness-105 transition cursor-pointer"
+            >
+              <Accessibility className="w-4 h-4" />
+              <span>{lang === 'FA' ? 'دسترسی‌پذیری و ADHD' : 'Accessibility & ADHD'}</span>
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Main Sticky Navigation & Action Header */}
-      <header className="sticky top-0 z-30 bg-[#FAF7F2]/95 backdrop-blur-md border-b border-[#C59B27]/40 shadow-sm">
-        <div className="max-w-[1440px] mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
-          {/* Logo & Quick Anchors */}
-          <div className="flex items-center gap-6">
+      {/* 2. STICKY FESTIVE WEDDING NAVIGATION HEADER */}
+      <header className="sticky top-0 z-40 bg-[#FFFDF9]/95 backdrop-blur-md border-b-2 border-[#D4AF37]/40 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+          {/* Brand Logo */}
+          <a href="#" className="flex items-center gap-3 group">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#E11D48] via-[#D4AF37] to-[#2C1E16] p-0.5 shadow-md">
+              <div className="w-full h-full rounded-[14px] bg-[#FFFDF9] flex items-center justify-center">
+                <Crown className="w-6 h-6 text-[#E11D48] group-hover:scale-110 transition" />
+              </div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-lg sm:text-xl font-black text-[#2C1E16] tracking-tight">
+                  {t.appTitle}
+                </span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-100 text-[#E11D48] border border-rose-200">
+                  جشن و تالار VIP
+                </span>
+              </div>
+              <p className="text-[11px] text-[#6E5A4F] font-medium">
+                منوساز زنده • محاسبه‌گر اقساط صیادی • پورسانت بازاریابان تالارها
+              </p>
+            </div>
+          </a>
+
+          {/* Navigation Links */}
+          <nav className="hidden xl:flex items-center gap-1 text-xs font-extrabold text-[#2C1E16]">
             <a
-              href="#top"
-              className="flex items-center gap-2.5 group focus:outline-none"
+              href="#builder"
+              className="px-3 py-2 rounded-xl hover:bg-[#FFF0F3] hover:text-[#E11D48] transition"
             >
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#3E2723] to-[#1E130D] border-2 border-[#C59B27] flex items-center justify-center text-[#E6C258] font-bold text-lg shadow-md">
-                EM
-              </div>
-              <div>
-                <div className="font-extrabold text-base text-[#2C1E16] tracking-tight">
-                  EventMate <span className="text-[#9A7411]">VIP</span>
-                </div>
-                <div className="text-[11px] text-[#6E5A4F] font-medium">
-                  ایونت‌مِیت | توان استیج FBNM
-                </div>
-              </div>
+              🎂 {t.navBuilder}
             </a>
-
-            <nav className="hidden xl:flex items-center gap-5 text-xs font-bold text-[#2C1E16]">
-              <a
-                href="#smart-menu-builder"
-                className="hover:text-[#9A7411] transition"
-              >
-                {t.navBuilder}
-              </a>
-              <a
-                href="#flash-dates"
-                className="hover:text-[#9A7411] transition flex items-center gap-1"
-              >
-                <Flame className="w-3.5 h-3.5 text-red-700" />
-                {t.navFlashDates}
-              </a>
-              <a
-                href="#venue-packages"
-                className="hover:text-[#9A7411] transition"
-              >
-                {t.navPackages}
-              </a>
-              <a
-                href="#recharts-analytics"
-                className="hover:text-[#9A7411] transition"
-              >
-                {t.navAnalytics}
-              </a>
-            </nav>
-          </div>
-
-          {/* Power Feature Action Buttons */}
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Accessibility & Voice Reader Button */}
-            <button
-              onClick={() => setIsA11yOpen(true)}
-              className={`px-3 py-2 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition ${
-                a11y.adhdFocusMode || a11y.highContrast || isSpeaking
-                  ? 'bg-[#2C1E16] text-[#E6C258] border-[#C59B27]'
-                  : 'bg-[#FFFDF9] text-[#2C1E16] border-[#C59B27]/60 hover:bg-[#F3EDE2]'
-              }`}
-              title="پنل دسترس‌پذیری، خوانش صوتی فارسی و حالت تمرکز ADHD"
+            <a
+              href="#flash-dates"
+              className="px-3 py-2 rounded-xl hover:bg-[#FFF0F3] hover:text-[#E11D48] transition"
             >
-              <Accessibility className="w-4 h-4 text-[#9A7411]" />
-              <span>
-                {lang === 'FA' ? 'دسترس‌پذیری و صوت' : 'Accessibility'}
-              </span>
+              🔥 {t.navFlashDates}
+            </a>
+            <a
+              href="#packages"
+              className="px-3 py-2 rounded-xl hover:bg-[#FFF0F3] hover:text-[#E11D48] transition"
+            >
+              👑 {t.navPackages}
+            </a>
+            <a
+              href="#analytics"
+              className="px-3 py-2 rounded-xl hover:bg-[#FFF0F3] hover:text-[#E11D48] transition"
+            >
+              📸 {t.navAnalytics}
+            </a>
+            <a
+              href="#marketers"
+              className="px-3 py-2 rounded-xl bg-rose-50 text-[#E11D48] border border-rose-200 hover:bg-rose-100 transition"
+            >
+              💎 {t.navMarketers}
+            </a>
+            <a
+              href="#android-ci"
+              className="px-3 py-2 rounded-xl hover:bg-[#FFF0F3] hover:text-[#E11D48] transition"
+            >
+              🤖 {t.navAndroidCi}
+            </a>
+          </nav>
+
+          {/* Header Action Buttons */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleInstallPwaClick}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#FFF0F3] text-[#E11D48] border border-rose-300 font-extrabold text-xs hover:bg-rose-100 transition cursor-pointer"
+            >
+              <Download className="w-4 h-4" />
+              <span className="hidden sm:inline">{t.ctaInstallPwa}</span>
+              <span className="sm:hidden">نصب اپ</span>
             </button>
 
-            {/* 1-Click HD Story Maker Button */}
             <button
-              onClick={() => setIsStoryModalOpen(true)}
-              className="px-3 py-2 rounded-xl bg-[#FFFDF9] text-[#2C1E16] border border-[#C59B27]/60 hover:bg-[#F3EDE2] text-xs font-bold flex items-center gap-1.5 transition"
-            >
-              <Camera className="w-4 h-4 text-[#9A7411]" />
-              <span>{t.navStoryMaker}</span>
-            </button>
-
-            {/* Official Google Gmail Integration Button */}
-            <button
-              onClick={() => setIsGmailModalOpen(true)}
-              className="px-3 py-2 rounded-xl bg-[#FFFDF9] text-[#2C1E16] border border-[#C59B27]/60 hover:bg-[#F3EDE2] text-xs font-bold flex items-center gap-1.5 transition"
-            >
-              <Mail className="w-4 h-4 text-[#9A7411]" />
-              <span>{t.navGmail}</span>
-            </button>
-
-            {/* VIP Subscription & Visitor Club Button */}
-            <button
-              onClick={() => setIsVipClubModalOpen(true)}
-              className="px-3 py-2 rounded-xl bg-[#2C1E16] text-[#E6C258] border border-[#C59B27] hover:bg-[#3E2723] text-xs font-bold flex items-center gap-1.5 transition"
-            >
-              <Crown className="w-4 h-4" />
-              <span>{t.navVipClub}</span>
-            </button>
-
-            {/* Android APK/AAB GitHub Direct Push Button */}
-            <button
-              onClick={() => setIsAndroidModalOpen(true)}
-              className="px-3 py-2 rounded-xl bg-[#FFFDF9] text-[#2C1E16] border border-[#C59B27]/60 hover:bg-[#F3EDE2] text-xs font-bold flex items-center gap-1.5 transition"
-            >
-              <Smartphone className="w-4 h-4 text-[#9A7411]" />
-              <span>{t.navAndroidApk}</span>
-            </button>
-
-            {/* 1-Click PWA Install Button */}
-            <button
-              onClick={() => setIsPwaModalOpen(true)}
-              className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#D4AF37] to-[#AA8215] text-[#1E130D] font-bold text-xs flex items-center gap-1.5 shadow-sm hover:brightness-105 transition"
+              onClick={() => setVipModalOpen(true)}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-[#E11D48] via-[#F43F5E] to-[#D4AF37] text-white font-extrabold text-xs shadow-md hover:brightness-105 transition cursor-pointer"
             >
               <Sparkles className="w-4 h-4" />
-              <span>{t.installPwaBtn}</span>
+              <span>پنل تالارداران و VIP</span>
             </button>
           </div>
         </div>
       </header>
 
-      {/* Hero Editorial Banner */}
-      <section
-        id="top"
-        className="relative overflow-hidden border-b border-[#E6DFD3] bg-gradient-to-b from-[#FAF7F2] via-[#F6EFE4] to-[#FAF7F2] py-10 px-4"
-      >
-        <div className="max-w-[1440px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-          <div className="lg:col-span-7 space-y-4">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-[#2C1E16] text-[#E6C258] text-xs font-bold border border-[#C59B27]">
-              <span>{t.heroBadge}</span>
-            </div>
-
-            <h1 className="text-2xl sm:text-4xl lg:text-[42px] font-extrabold text-[#2C1E16] leading-[1.25]">
-              {t.heroHeadline}
-            </h1>
-
-            <p className="text-sm sm:text-base text-[#6E5A4F] leading-relaxed max-w-2xl">
-              {t.heroDescription}
-            </p>
-
-            {/* Key Value Stat Strip */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
-              <div className="luxury-card p-3.5 rounded-xl bg-[#FFFDF9] border border-[#C59B27]/40">
-                <div className="text-xs text-[#6E5A4F]">پکیج‌های واقعی تالار</div>
-                <div className="text-lg font-extrabold text-[#2C1E16] font-mono-num mt-0.5">
-                  ۱۰ عمارت و کترینگ
-                </div>
-              </div>
-              <div className="luxury-card p-3.5 rounded-xl bg-[#FFFDF9] border border-[#C59B27]/40">
-                <div className="text-xs text-[#6E5A4F]">اقساط با چک صیادی</div>
-                <div className="text-lg font-extrabold text-[#9A7411] font-mono-num mt-0.5">
-                  ۳ تا ۱۲ ماهه
-                </div>
-              </div>
-              <div className="luxury-card p-3.5 rounded-xl bg-[#FFFDF9] border border-[#C59B27]/40">
-                <div className="text-xs text-[#6E5A4F]">تخفیف شب‌های خالی</div>
-                <div className="text-lg font-extrabold text-emerald-800 font-mono-num mt-0.5">
-                  تا ۴۰٪ تخفیف
-                </div>
-              </div>
-              <div className="luxury-card p-3.5 rounded-xl bg-[#FFFDF9] border border-[#C59B27]/40">
-                <div className="text-xs text-[#6E5A4F]">پشتیبانی ارزی و زبانی</div>
-                <div className="text-lg font-extrabold text-[#2C1E16] font-mono-num mt-0.5">
-                  ۵ زبان • ۵ ارز زنده
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Right Hero Featured Royal Banquet Preview Card */}
-          <div className="lg:col-span-5">
-            <div className="luxury-card relative rounded-2xl overflow-hidden border-2 border-[#C59B27] shadow-2xl bg-[#2C1E16]">
-              <img
-                src="https://images.unsplash.com/photo-1519167758481-83f550bb49b3?auto=format&fit=crop&w=1000&q=80"
-                alt="Royal Wedding Banquet Hall"
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).src =
-                    FALLBACK_LUXURY_IMAGE;
-                }}
-                className="w-full h-64 sm:h-72 object-cover opacity-90"
-              />
-              <div className="p-5 bg-gradient-to-t from-[#1E130D] via-[#2C1E16] to-[#2C1E16]/90 text-[#FAF7F2] space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-[#E6C258] flex items-center gap-1.5">
-                    <Sparkles className="w-4 h-4" />
-                    اکوسیستم آفرینش | شهر جدید نیومتاورسیتی جهان
-                  </span>
-                  <span className="text-xs font-mono-num px-2.5 py-0.5 rounded bg-[#C59B27] text-[#1E130D] font-bold">
-                    توان استیج FBNM
-                  </span>
-                </div>
-                <div className="font-bold text-base text-white">
-                  {selectedVenueTitle}
-                </div>
-                <div className="flex items-center justify-between text-xs text-[#E6DFD3] pt-1">
-                  <span>
-                    ظرفیت انتخابی:{' '}
-                    <strong className="text-[#E6C258] font-mono-num">
-                      {guestCount}
-                    </strong>{' '}
-                    نفر
-                  </span>
-                  <span>
-                    هر نفر:{' '}
-                    <strong className="text-[#E6C258] font-mono-num">
-                      {formatMoney(
-                        calculation.effectivePerGuestToman,
-                        currency,
-                        lang,
-                        liveRates,
-                      )}
-                    </strong>
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
+      {/* Celebration Toast Banner */}
+      {celebrationBanner && (
+        <div className="sticky top-[68px] z-30 bg-gradient-to-r from-[#E11D48] via-[#D4AF37] to-[#E11D48] text-white px-4 py-2.5 text-center text-xs sm:text-sm font-extrabold shadow-lg flex items-center justify-center gap-2">
+          <PartyPopper className="w-5 h-5 shrink-0" />
+          <span>{celebrationBanner}</span>
+          <button
+            onClick={() => setCelebrationBanner(null)}
+            className="ms-3 px-2 py-0.5 rounded bg-white/20 hover:bg-white/30 text-xs"
+          >
+            ✕
+          </button>
         </div>
-      </section>
+      )}
 
-      {/* SECTION 1: SMART LIVE MENU BUILDER & SAYYADI CHECK CALCULATOR */}
-      <section
-        id="smart-menu-builder"
-        className="max-w-[1440px] mx-auto w-full px-4 py-10"
-      >
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          {/* Left 7 Columns: Interactive Menu & Ceremonial Builder */}
-          <div className="lg:col-span-7 space-y-6 adhd-dimmable adhd-spotlight">
-            {/* Step 1: Guest Count & Active Venue Banner */}
-            <div className="luxury-card p-6 rounded-2xl bg-[#FFFDF9] border border-[#C59B27]/50 shadow-md space-y-5">
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#E6DFD3] pb-4">
-                <div className="flex items-center gap-2.5">
-                  <div className="p-2.5 rounded-xl bg-[#2C1E16] text-[#E6C258]">
-                    <Users className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h2 className="font-extrabold text-lg text-[#2C1E16]">
-                      ۱. {t.guestCountLabel}
-                    </h2>
-                    <p className="text-xs text-[#6E5A4F]">
-                      تالار / پکیج فعال:{' '}
-                      <strong className="text-[#9A7411]">
-                        {selectedVenueTitle}
-                      </strong>
-                    </p>
+      {/* MAIN CONTENT CONTAINER */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6">
+        {/* 3. JOYFUL, FESTIVE WEDDING CELEBRATION HERO SECTION */}
+        <section className="my-6 rounded-[32px] wedding-festive-header border-2 border-[#D4AF37]/60 shadow-2xl overflow-hidden relative p-6 sm:p-10">
+          {/* Decorative Festive Floating Badges */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center relative z-10">
+            <div className="lg:col-span-7 space-y-5">
+              <div className="inline-flex flex-wrap items-center gap-2 px-4 py-1.5 rounded-full bg-white/90 border border-rose-300 shadow-sm">
+                <Heart className="w-4 h-4 text-[#E11D48] fill-[#E11D48]" />
+                <span className="text-xs font-extrabold text-[#E11D48]">
+                  {t.heroBadge}
+                </span>
+              </div>
+
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#2C1E16] leading-tight">
+                <span className="text-[#E11D48]">جشن عروسی رویایی‌تان</span> را با منوساز زنده،{' '}
+                <span className="underline decoration-[#D4AF37] decoration-4 underline-offset-8">
+                  تخفیف شب‌های خالی
+                </span>{' '}
+                و اقساط چک صیادی بسازید! 🎉
+              </h1>
+
+              <p className="text-sm sm:text-base text-[#4E342E] leading-relaxed font-medium">
+                {t.heroDesc}
+              </p>
+
+              {/* Festive Quick Highlights */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
+                <div className="p-3 rounded-2xl bg-white/90 border border-rose-200 shadow-sm">
+                  <div className="text-xs text-[#6E5A4F] font-bold">تخفیف شب‌های خالی</div>
+                  <div className="font-mono-num text-lg font-black text-[#E11D48] mt-0.5">
+                    تا ۲۸٪ هدیه جشن
                   </div>
                 </div>
-
-                <div className="px-4 py-2 rounded-xl bg-[#2C1E16] text-[#E6C258] font-mono-num font-extrabold text-xl border border-[#C59B27]">
-                  {guestCount.toLocaleString(lang === 'FA' ? 'fa-IR' : 'en-US')}{' '}
-                  <span className="text-xs font-normal text-[#FAF7F2]">
-                    {lang === 'FA' ? 'نفر مهمان' : 'Guests'}
-                  </span>
+                <div className="p-3 rounded-2xl bg-white/90 border border-[#D4AF37]/50 shadow-sm">
+                  <div className="text-xs text-[#6E5A4F] font-bold">اقساط چک صیادی</div>
+                  <div className="font-mono-num text-lg font-black text-[#9A7411] mt-0.5">
+                    ۳ تا ۱۲ ماهه (۰٪)
+                  </div>
+                </div>
+                <div className="p-3 rounded-2xl bg-white/90 border border-emerald-200 shadow-sm">
+                  <div className="text-xs text-[#6E5A4F] font-bold">پورسانت بازاریابان</div>
+                  <div className="font-mono-num text-lg font-black text-emerald-700 mt-0.5">
+                    ۳۵٪ نقدی + تمدید
+                  </div>
+                </div>
+                <div className="p-3 rounded-2xl bg-white/90 border border-amber-200 shadow-sm">
+                  <div className="text-xs text-[#6E5A4F] font-bold">خوانش صوتی فاکتور</div>
+                  <div className="text-sm font-black text-[#2C1E16] mt-1">
+                    ویژه کم‌بینایان و ADHD
+                  </div>
                 </div>
               </div>
 
-              {/* Guest Slider */}
-              <div className="space-y-3">
+              {/* Hero CTA Buttons */}
+              <div className="flex flex-wrap items-center gap-3 pt-2">
+                <a
+                  href="#builder"
+                  className="flex items-center gap-2 px-6 py-4 rounded-2xl bg-gradient-to-r from-[#E11D48] via-[#F43F5E] to-[#D4AF37] text-white font-black text-sm shadow-xl hover:scale-[1.02] transition"
+                >
+                  <PartyPopper className="w-5 h-5" />
+                  <span>{t.ctaStartBuilder}</span>
+                </a>
+
+                <a
+                  href="#marketers"
+                  className="flex items-center gap-2 px-5 py-4 rounded-2xl bg-white text-[#2C1E16] border-2 border-[#D4AF37] font-extrabold text-xs sm:text-sm shadow-md hover:bg-[#FFF0F3] transition"
+                >
+                  <Gift className="w-5 h-5 text-[#E11D48]" />
+                  <span>{t.ctaMarketerClub}</span>
+                </a>
+
+                <button
+                  onClick={handleSpeakInvoice}
+                  className="flex items-center gap-2 px-4 py-4 rounded-2xl bg-[#2C1E16] text-[#E6C258] font-bold text-xs shadow-md hover:bg-[#3E2723] transition cursor-pointer"
+                >
+                  <Volume2 className="w-4 h-4 text-[#F43F5E]" />
+                  <span>خوانش صوتی جشن و فاکتور</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Right Visual Collage: Radiant Wedding Celebration */}
+            <div className="lg:col-span-5 relative">
+              <div className="relative rounded-3xl overflow-hidden border-4 border-white shadow-2xl">
+                <img
+                  src="https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=1000&q=80"
+                  alt="Royal Wedding Celebration Hall"
+                  className="w-full h-80 sm:h-96 object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#2C1E16]/85 via-transparent to-transparent flex flex-col justify-end p-5 text-white">
+                  <div className="flex items-center gap-2 text-xs font-extrabold text-[#E6C258]">
+                    <Sparkles className="w-4 h-4 text-[#F43F5E]" />
+                    <span>کاخ‌تالارها و باغ‌عمارت‌های ۵ ستاره ایران و جهان</span>
+                  </div>
+                  <div className="text-lg font-black mt-0.5">
+                    گل‌آرایی رز هلندی، آتش‌بازی سرد، استیج کنسرتی FBNM و منوی سلطنتی
+                  </div>
+                  <div className="mt-2 flex items-center justify-between bg-white/15 backdrop-blur-md rounded-xl px-3.5 py-2 border border-white/25 text-xs">
+                    <span>هزینه هر نفر در پکیج فعلی شما:</span>
+                    <span className="font-mono-num font-black text-[#E6C258] text-sm">
+                      {formatMoney(calculation.finalPerGuestToman, currency, lang)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* 4. SMART FLASH DATES CALENDAR (شب‌های خالی تالار با تخفیف لحظه آخری) */}
+        <section id="flash-dates" className="py-8 adhd-dimmable">
+          <div className="luxury-card rounded-3xl p-6 sm:p-8 bg-gradient-to-br from-[#FFF0F3] via-[#FFFDF9] to-[#FEF9E7] border-2 border-rose-300 shadow-xl">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+              <div>
+                <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#E11D48] text-white text-xs font-extrabold shadow">
+                  <CalendarHeart className="w-4 h-4" />
+                  <span>حراج شاد شب‌های خالی تالار (Flash Wedding Dates)</span>
+                </span>
+                <h2 className="text-2xl sm:text-3xl font-black text-[#2C1E16] mt-2">
+                  {t.flashDatesTitle}
+                </h2>
+                <p className="text-xs sm:text-sm text-[#6E5A4F] mt-1">{t.flashDatesSub}</p>
+              </div>
+              {selectedFlashDate && (
+                <button
+                  onClick={() => setSelectedFlashDate(null)}
+                  className="self-start px-4 py-2 rounded-xl bg-white border border-rose-300 text-xs font-bold text-[#E11D48] hover:bg-rose-50 cursor-pointer"
+                >
+                  حذف تخفیف تاریخ ({selectedFlashDate.discountPercent}%)
+                </button>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {FLASH_DATES.map((offer) => {
+                const isSelected = selectedFlashDate?.id === offer.id;
+                return (
+                  <div
+                    key={offer.id}
+                    onClick={() => handleSelectFlashDate(offer)}
+                    className={`p-5 rounded-2xl border-2 transition cursor-pointer flex flex-col justify-between ${
+                      isSelected
+                        ? 'bg-gradient-to-br from-[#FFF0F3] to-[#FFFBEB] border-[#E11D48] shadow-lg ring-2 ring-[#E11D48]/30'
+                        : 'bg-white border-[#E6DFD3] hover:border-[#D4AF37] hover:shadow-md'
+                    }`}
+                  >
+                    <div className="space-y-2.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="px-3 py-1 rounded-full text-xs font-extrabold bg-rose-100 text-[#E11D48]">
+                          {offer.dayName[lang]}
+                        </span>
+                        <span className="px-3 py-1 rounded-full font-mono-num text-xs font-black bg-gradient-to-r from-[#E11D48] to-[#D4AF37] text-white shadow-sm">
+                          {formatNumberLocale(offer.discountPercent, lang)}% OFF
+                        </span>
+                      </div>
+
+                      <div className="font-black text-base text-[#2C1E16]">
+                        📅 {offer.persianDate}
+                      </div>
+                      <div className="text-xs font-bold text-[#9A7411]">
+                        🏛️ {offer.venueName[lang]}
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-[#FAF7F2] border border-[#E6DFD3] text-xs text-[#2C1E16] font-medium">
+                        🎁 {offer.giftBonus[lang]}
+                      </div>
+                    </div>
+
+                    <div className="mt-4 pt-3 border-t border-[#E6DFD3] flex items-center justify-between text-xs font-extrabold">
+                      <span className="text-emerald-700">
+                        ظرفیت باقی‌مانده: {formatNumberLocale(offer.capacityLeft, lang)} شب
+                      </span>
+                      <span className="text-[#E11D48] flex items-center gap-1">
+                        {isSelected ? '✓ اعمال‌شده روی فاکتور' : 'انتخاب و اعمال تخفیف ←'}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        {/* 5. LIVE MENU BUILDER & SAYYADI CHECK INSTALLMENT CALCULATOR */}
+        <section id="builder" className="py-6 adhd-spotlight">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            {/* LEFT/RIGHT BUILDER CONTROLS (7 COLUMNS) */}
+            <div className="lg:col-span-7 space-y-6">
+              {/* Step 1: Guest Count & Serving Style */}
+              <div className="luxury-card rounded-3xl p-6 bg-white border-2 border-[#D4AF37]/60 shadow-lg space-y-6">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#E11D48] to-[#D4AF37] text-white flex items-center justify-center shadow">
+                      <Users className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h2 className="text-lg sm:text-xl font-black text-[#2C1E16]">
+                        ۱. {t.guestCountLabel}
+                      </h2>
+                      <p className="text-xs text-[#6E5A4F]">
+                        تغییر تعداد مهمانان در لحظه هزینه هر نفر و اقساط چک صیادی را به‌روز می‌کند
+                      </p>
+                    </div>
+                  </div>
+                  <div className="px-4 py-2 rounded-2xl bg-gradient-to-r from-[#FFF0F3] to-[#FEF9E7] border border-[#E11D48]/40 font-mono-num text-xl font-black text-[#E11D48]">
+                    {formatNumberLocale(guestCount, lang)}{' '}
+                    <span className="text-xs font-bold text-[#2C1E16]">نفر مهمان</span>
+                  </div>
+                </div>
+
                 <input
                   type="range"
                   min={50}
@@ -780,1056 +769,686 @@ ${itemsList}
                   step={10}
                   value={guestCount}
                   onChange={(e) => setGuestCount(Number(e.target.value))}
-                  className="w-full h-2.5 bg-[#E6DFD3] rounded-lg appearance-none cursor-pointer accent-[#C59B27]"
+                  className="w-full h-3 rounded-lg accent-[#E11D48] cursor-pointer"
                   aria-label="Guest Count Slider"
                 />
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  {[50, 100, 200, 300, 450, 600, 800, 1000].map((preset) => (
+
+                <div className="flex flex-wrap gap-2">
+                  {[100, 200, 300, 400, 500, 700, 1000].map((preset) => (
                     <button
                       key={preset}
                       onClick={() => setGuestCount(preset)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold font-mono-num border transition ${
+                      className={`px-3.5 py-1.5 rounded-xl font-mono-num text-xs font-extrabold border transition cursor-pointer ${
                         guestCount === preset
-                          ? 'bg-[#2C1E16] text-[#E6C258] border-[#C59B27]'
-                          : 'bg-[#FAF7F2] text-[#2C1E16] border-[#E6DFD3] hover:border-[#C59B27]'
+                          ? 'bg-[#E11D48] text-white border-[#E11D48] shadow'
+                          : 'bg-[#FAF7F2] text-[#2C1E16] border-[#E6DFD3] hover:border-[#D4AF37]'
                       }`}
                     >
-                      {preset} نفر
+                      {formatNumberLocale(preset, lang)} نفر
                     </button>
                   ))}
                 </div>
-              </div>
-            </div>
 
-            {/* Step 2: Serving Style Selection (تک‌پرس، دیس‌پرس، سلف‌سرویس VIP) */}
-            <div className="luxury-card p-6 rounded-2xl bg-[#FFFDF9] border border-[#C59B27]/50 shadow-md space-y-4">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2.5 rounded-xl bg-[#2C1E16] text-[#E6C258]">
-                  <Utensils className="w-5 h-5" />
-                </div>
-                <h2 className="font-extrabold text-lg text-[#2C1E16]">
-                  ۲. {t.servingStyleLabel}
-                </h2>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
-                {SERVING_STYLES.map((style) => {
-                  const active = servingStyle === style.id;
-                  return (
-                    <button
-                      key={style.id}
-                      onClick={() => setServingStyle(style.id)}
-                      className={`p-4 rounded-xl border text-right flex flex-col justify-between transition ${
-                        active
-                          ? 'bg-[#2C1E16] text-[#FAF7F2] border-2 border-[#C59B27] shadow-lg'
-                          : 'bg-[#FAF7F2] text-[#2C1E16] border-[#E6DFD3] hover:border-[#C59B27]'
-                      }`}
-                    >
-                      <div className="space-y-1.5">
-                        <span
-                          className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded ${
+                {/* Serving Style Selector */}
+                <div className="pt-4 border-t border-[#E6DFD3] space-y-3">
+                  <h3 className="font-extrabold text-sm text-[#2C1E16]">
+                    ۲. {t.servingStyleLabel}
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {SERVING_STYLES.map((style) => {
+                      const active = servingStyleId === style.id;
+                      return (
+                        <button
+                          key={style.id}
+                          onClick={() => setServingStyleId(style.id)}
+                          className={`p-4 rounded-2xl border-2 text-start transition cursor-pointer flex flex-col justify-between ${
                             active
-                              ? 'bg-[#C59B27] text-[#1E130D]'
-                              : 'bg-[#E6DFD3] text-[#6E5A4F]'
+                              ? 'bg-gradient-to-b from-[#FFF0F3] to-white border-[#E11D48] shadow-md'
+                              : 'bg-[#FAF7F2] border-[#E6DFD3] hover:border-[#D4AF37]'
                           }`}
                         >
-                          {style.badge[lang]}
-                        </span>
-                        <div className="font-extrabold text-sm">
-                          {style.title[lang]}
-                        </div>
-                        <p
-                          className={`text-xs leading-relaxed ${
-                            active ? 'text-[#E6DFD3]' : 'text-[#6E5A4F]'
-                          }`}
-                        >
-                          {style.subtitle[lang]}
-                        </p>
-                      </div>
-                      <div className="mt-3 pt-2 border-t border-[#C59B27]/30 flex items-center justify-between text-xs font-mono-num">
-                        <span>هزینه سرویس و ظروف:</span>
-                        <span
-                          className={`font-bold ${
-                            active ? 'text-[#E6C258]' : 'text-[#9A7411]'
-                          }`}
-                        >
-                          +
-                          {formatMoney(
-                            style.serviceFeePerGuestToman,
-                            currency,
-                            lang,
-                            liveRates,
-                          )}
-                        </span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Step 3: Select Dishes, Fruits/Pastries & Ceremonial Services */}
-            <div className="luxury-card p-6 rounded-2xl bg-[#FFFDF9] border border-[#C59B27]/50 shadow-md space-y-5">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <h2 className="font-extrabold text-lg text-[#2C1E16]">
-                  ۳. انتخاب غذاهای اصلی، پیش‌غذا، میوه و شیرینی و خدمات تشریفات
-                </h2>
-                <span className="text-xs font-bold px-3 py-1 rounded-lg bg-[#FAF7F2] border border-[#C59B27]/40 text-[#9A7411]">
-                  {selectedItemIds.length} آیتم در منوی شما انتخاب شده است
-                </span>
+                          <div>
+                            <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-[#2C1E16] text-[#E6C258] mb-2">
+                              {style.badge[lang]}
+                            </span>
+                            <div className="font-extrabold text-xs sm:text-sm text-[#2C1E16]">
+                              {style.title[lang]}
+                            </div>
+                            <p className="text-[11px] text-[#6E5A4F] mt-1 leading-relaxed">
+                              {style.subtitle[lang]}
+                            </p>
+                          </div>
+                          <div className="mt-3 pt-2 border-t border-[#E6DFD3] text-[11px] font-mono-num font-bold text-[#E11D48]">
+                            سرویس و شارژ: +{formatMoney(style.serviceFeePerGuestToman, currency, lang, liveRates)}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
 
-              {/* Category Tabs */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {(
-                  [
-                    {id: 'main', label: t.mainCoursesTab},
-                    {id: 'appetizer', label: t.appetizersTab},
-                    {id: 'fruit_pastry', label: t.fruitsPastryTab},
-                    {id: 'ceremonial', label: t.ceremonialTab},
-                  ] as Array<{id: MenuCategory; label: string}>
-                ).map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveMenuTab(tab.id)}
-                    className={`py-2.5 px-3 rounded-xl font-bold text-xs border transition ${
-                      activeMenuTab === tab.id
-                        ? 'bg-[#2C1E16] text-[#E6C258] border-[#C59B27] shadow-sm'
-                        : 'bg-[#FAF7F2] text-[#2C1E16] border-[#E6DFD3] hover:border-[#C59B27]'
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
+              {/* Step 2: Interactive Menu & Ceremonial Items Selector */}
+              <div className="luxury-card rounded-3xl p-6 bg-white border-2 border-[#D4AF37]/60 shadow-lg space-y-5">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#D4AF37] to-[#9A7411] text-white flex items-center justify-center shadow">
+                    <UtensilsCrossed className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg sm:text-xl font-black text-[#2C1E16]">
+                      ۳. انتخاب زنده غذاهای اصلی، پیش‌غذا، میوه و تشریفات عروسی
+                    </h2>
+                    <p className="text-xs text-[#6E5A4F]">
+                      روی هر آیتم کلیک کنید تا به پیش‌فاکتور عروسی شما اضافه یا کسر شود
+                    </p>
+                  </div>
+                </div>
 
-              {/* Menu Items Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {MENU_ITEMS.filter(
-                  (item) => item.category === activeMenuTab,
-                ).map((item) => {
-                  const isSelected = selectedItemIds.includes(item.id);
-                  return (
-                    <div
-                      key={item.id}
-                      onClick={() => toggleMenuItem(item.id)}
-                      className={`cursor-pointer rounded-2xl overflow-hidden border transition flex flex-col justify-between ${
-                        isSelected
-                          ? 'bg-[#FAF7F2] border-2 border-[#C59B27] shadow-md'
-                          : 'bg-white border-[#E6DFD3] hover:border-[#C59B27]/60'
+                {/* Category Filter Tabs */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {(
+                    [
+                      {id: 'main', label: `🍖 ${t.catMain}`},
+                      {id: 'appetizer', label: `🥗 ${t.catAppetizer}`},
+                      {id: 'fruit_pastry', label: `🎂 ${t.catFruitPastry}`},
+                      {id: 'ceremonial', label: `✨ ${t.catCeremonial}`},
+                    ] as Array<{id: MenuCategory; label: string}>
+                  ).map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveCategory(tab.id)}
+                      className={`py-2.5 px-3 rounded-2xl text-xs font-extrabold border transition cursor-pointer ${
+                        activeCategory === tab.id
+                          ? 'bg-gradient-to-r from-[#E11D48] to-[#D4AF37] text-white border-transparent shadow-md'
+                          : 'bg-[#FAF7F2] text-[#2C1E16] border-[#E6DFD3] hover:bg-[#FFF0F3]'
                       }`}
                     >
-                      <div>
-                        <div className="relative h-36 overflow-hidden bg-[#2C1E16]">
-                          <img
-                            src={item.image}
-                            alt={item.name[lang]}
-                            onError={(e) => {
-                              (e.currentTarget as HTMLImageElement).src =
-                                FALLBACK_LUXURY_IMAGE;
-                            }}
-                            className="w-full h-full object-cover transition duration-300 hover:scale-105"
-                          />
-                          <div className="absolute top-2.5 right-2.5 left-2.5 flex items-center justify-between">
-                            {item.popular ? (
-                              <span className="px-2.5 py-0.5 rounded-md bg-[#2C1E16]/90 text-[#E6C258] text-[11px] font-bold border border-[#C59B27]">
-                                ★ محبوب‌ترین
-                              </span>
-                            ) : (
-                              <span />
-                            )}
-                            <span
-                              className={`w-7 h-7 rounded-lg flex items-center justify-center border font-bold ${
-                                isSelected
-                                  ? 'bg-[#C59B27] text-[#1E130D] border-[#1E130D]'
-                                  : 'bg-white/90 text-[#2C1E16] border-[#E6DFD3]'
-                              }`}
-                            >
-                              {isSelected ? '✓' : '+'}
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="p-4 space-y-1.5">
-                          <div className="font-bold text-sm text-[#2C1E16]">
-                            {item.name[lang]}
-                          </div>
-                          <p className="text-xs text-[#6E5A4F] leading-relaxed">
-                            {item.description[lang]}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="px-4 py-3 bg-[#FAF7F2] border-t border-[#E6DFD3] flex items-center justify-between text-xs">
-                        <span className="text-[#6E5A4F] font-medium">
-                          {item.pricingType === 'per_guest'
-                            ? lang === 'FA'
-                              ? 'هر نفر مهمان:'
-                              : 'Per Guest:'
-                            : lang === 'FA'
-                              ? 'کل مراسم (ثابت):'
-                              : 'Fixed Event Fee:'}
-                        </span>
-                        <span className="font-extrabold font-mono-num text-[#9A7411]">
-                          {formatMoney(
-                            item.priceToman,
-                            currency,
-                            lang,
-                            liveRates,
-                          )}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-
-          {/* Right 5 Columns: Sticky Live Proforma Invoice & Purple Sayyadi Check Calculator */}
-          <div className="lg:col-span-5 lg:sticky lg:top-20 space-y-5 adhd-dimmable adhd-spotlight">
-            <div className="luxury-card rounded-2xl bg-[#FFFDF9] border-2 border-[#C59B27] shadow-2xl overflow-hidden">
-              {/* Invoice Header */}
-              <div className="bg-[#2C1E16] text-[#FAF7F2] p-5 border-b border-[#C59B27]/40 space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-[#E6C258] flex items-center gap-1.5">
-                    <CreditCard className="w-4 h-4" />
-                    {t.liveInvoiceTitle}
-                  </span>
-                  <button
-                    onClick={
-                      isSpeaking ? handleStopSpeaking : handleSpeakInvoice
-                    }
-                    className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 transition ${
-                      isSpeaking
-                        ? 'bg-red-600 text-white'
-                        : 'bg-[#C59B27] text-[#1E130D] hover:brightness-105'
-                    }`}
-                    title="خوانش صوتی فارسی پیش‌فاکتور ویژه کم‌بینایان"
-                  >
-                    {isSpeaking ? (
-                      <>
-                        <VolumeX className="w-3.5 h-3.5" />
-                        توقف صوت
-                      </>
-                    ) : (
-                      <>
-                        <Volume2 className="w-3.5 h-3.5" />
-                        خوانش صوتی فاکتور
-                      </>
-                    )}
-                  </button>
-                </div>
-                <div className="text-sm font-bold text-white truncate">
-                  {selectedVenueTitle}
-                </div>
-              </div>
-
-              {/* Invoice Body */}
-              <div className="p-5 space-y-4">
-                {/* Flash Discount Alert if applied */}
-                {flashDiscountPercent > 0 && (
-                  <div className="p-3 rounded-xl bg-red-50 border border-red-300 text-red-900 flex items-center justify-between text-xs font-bold">
-                    <span>
-                      🔥 تخفیف شب خالی ({flashDiscountPercent}٪) اعمال شد:
-                    </span>
-                    <span className="font-mono-num">
-                      -
-                      {formatMoney(
-                        calculation.discountAmountToman,
-                        currency,
-                        lang,
-                        liveRates,
-                      )}
-                    </span>
-                  </div>
-                )}
-
-                {/* Primary 4 Financial Outputs Required by User */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="p-3.5 rounded-xl bg-[#FAF7F2] border border-[#E6DFD3]">
-                    <div className="text-xs text-[#6E5A4F]">
-                      {t.perGuestCost}
-                    </div>
-                    <div className="text-lg font-extrabold text-[#2C1E16] font-mono-num mt-1">
-                      {formatMoney(
-                        calculation.effectivePerGuestToman,
-                        currency,
-                        lang,
-                        liveRates,
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="p-3.5 rounded-xl bg-[#2C1E16] text-[#FAF7F2] border border-[#C59B27]">
-                    <div className="text-xs text-[#E6DFD3]">
-                      {t.totalContractAmount}
-                    </div>
-                    <div className="text-lg font-extrabold text-[#E6C258] font-mono-num mt-1">
-                      {formatMoney(
-                        calculation.netTotalContractToman,
-                        currency,
-                        lang,
-                        liveRates,
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="p-3.5 rounded-xl bg-[#FAF7F2] border border-[#E6DFD3]">
-                    <div className="text-xs text-[#6E5A4F]">
-                      {t.downPaymentLabel} ({downPaymentPercent}%)
-                    </div>
-                    <div className="text-base font-extrabold text-[#9A7411] font-mono-num mt-1">
-                      {formatMoney(
-                        calculation.downPaymentToman,
-                        currency,
-                        lang,
-                        liveRates,
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="p-3.5 rounded-xl bg-purple-950 text-purple-100 border border-purple-400">
-                    <div className="text-xs text-purple-200">
-                      {t.eachCheckAmount} ({installmentMonths} چک)
-                    </div>
-                    <div className="text-base font-extrabold text-white font-mono-num mt-1">
-                      {formatMoney(
-                        calculation.eachCheckToman,
-                        currency,
-                        lang,
-                        liveRates,
-                      )}
-                    </div>
-                  </div>
+                      {tab.label}
+                    </button>
+                  ))}
                 </div>
 
-                {/* Sayyadi Installment Controls */}
-                <div className="p-4 rounded-xl bg-[#FAF7F2] border border-[#E6DFD3] space-y-3">
-                  <div className="flex items-center justify-between text-xs font-bold text-[#2C1E16]">
-                    <span>درصد پیش‌پرداخت نقدی:</span>
-                    <div className="flex gap-1.5">
-                      {[20, 30, 40, 50].map((pct) => (
-                        <button
-                          key={pct}
-                          onClick={() => setDownPaymentPercent(pct)}
-                          className={`px-2.5 py-1 rounded-lg font-mono-num border ${
-                            downPaymentPercent === pct
-                              ? 'bg-[#2C1E16] text-[#E6C258] border-[#C59B27]'
-                              : 'bg-white text-[#2C1E16] border-[#E6DFD3]'
-                          }`}
-                        >
-                          {pct}%
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between text-xs font-bold text-[#2C1E16]">
-                    <span>{t.sayyadiInstallmentsLabel}:</span>
-                    <div className="flex gap-1.5">
-                      {[3, 6, 9, 12].map((m) => (
-                        <button
-                          key={m}
-                          onClick={() => setInstallmentMonths(m)}
-                          className={`px-2.5 py-1 rounded-lg font-mono-num border ${
-                            installmentMonths === m
-                              ? 'bg-purple-900 text-white border-purple-500'
-                              : 'bg-white text-[#2C1E16] border-[#E6DFD3]'
-                          }`}
-                        >
-                          {m} ماهه
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Visual Bank Markazi Purple Sayyadi Check Simulator */}
-                <div className="p-4 rounded-xl bg-gradient-to-br from-[#3B1D5A] via-[#2A1242] to-[#1D0B30] text-white border border-purple-400/50 shadow-inner space-y-2.5">
-                  <div className="flex items-center justify-between text-[11px] text-purple-200 border-b border-purple-400/30 pb-2">
-                    <span className="font-bold flex items-center gap-1.5">
-                      🟣 شبیه‌ساز چک صیادی بنفش (ثبت در سامانه صیاد بانک مرکزی)
-                    </span>
-                    <span className="font-mono-num bg-purple-900/80 px-2 py-0.5 rounded border border-purple-400/40">
-                      شناسه ۱۶ رقمی صیاد
-                    </span>
-                  </div>
-
-                  <div className="max-h-32 overflow-y-auto space-y-1.5 pr-1">
-                    {calculation.sayyadiChecks.map((chk) => (
+                {/* Menu Items Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {MENU_ITEMS.filter((item) => item.category === activeCategory).map((item) => {
+                    const checked = selectedItemIds.includes(item.id);
+                    return (
                       <div
-                        key={chk.checkNumber}
-                        className="flex items-center justify-between text-xs bg-white/10 px-3 py-1.5 rounded-lg"
+                        key={item.id}
+                        onClick={() => toggleMenuItem(item.id)}
+                        className={`rounded-2xl overflow-hidden border-2 transition cursor-pointer flex flex-col justify-between ${
+                          checked
+                            ? 'bg-gradient-to-b from-[#FFF0F3] to-white border-[#E11D48] shadow-md'
+                            : 'bg-[#FAF7F2] border-[#E6DFD3] hover:border-[#D4AF37]'
+                        }`}
                       >
                         <div>
-                          <span className="font-bold text-purple-200">
-                            چک {chk.checkNumber}:
-                          </span>{' '}
-                          <span className="text-[11px] text-white/90">
-                            {chk.dueDatePersian}
+                          <div className="relative h-36 w-full overflow-hidden">
+                            <img
+                              src={item.image}
+                              alt={item.name[lang]}
+                              className="w-full h-full object-cover"
+                              loading="lazy"
+                            />
+                            <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5">
+                              {item.popular && (
+                                <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-[#E11D48] text-white shadow">
+                                  ★ محبوب عروس و دامادها
+                                </span>
+                              )}
+                            </div>
+                            <div
+                              className={`absolute bottom-2.5 left-2.5 w-8 h-8 rounded-xl flex items-center justify-center font-bold shadow ${
+                                checked
+                                  ? 'bg-[#E11D48] text-white'
+                                  : 'bg-white/90 text-[#2C1E16]'
+                              }`}
+                            >
+                              {checked ? <Check className="w-5 h-5" /> : '+'}
+                            </div>
+                          </div>
+
+                          <div className="p-4 space-y-1.5">
+                            <div className="font-extrabold text-sm text-[#2C1E16]">
+                              {item.name[lang]}
+                            </div>
+                            <p className="text-xs text-[#6E5A4F] leading-relaxed">
+                              {item.description[lang]}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="px-4 pb-4 pt-2 border-t border-[#E6DFD3]/70 flex items-center justify-between text-xs">
+                          <span className="text-[11px] font-semibold text-[#6E5A4F]">
+                            {item.pricingType === 'per_guest'
+                              ? 'به ازای هر نفر'
+                              : 'پکیج کامل کل مجلس'}
+                          </span>
+                          <span className="font-mono-num font-black text-sm text-[#E11D48]">
+                            {formatMoney(item.priceToman, currency, lang, liveRates)}
                           </span>
                         </div>
-                        <span className="font-mono-num text-[10px] text-purple-300 hidden sm:inline">
-                          ID: {chk.sayyadiId}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* RIGHT/LEFT STICKY OFFICIAL PROFORMA INVOICE & SAYYADI CHECK CALCULATOR (5 COLUMNS) */}
+            <div className="lg:col-span-5 lg:sticky lg:top-24 space-y-5">
+              <div className="luxury-card rounded-3xl overflow-hidden bg-[#FFFDF9] border-2 border-[#D4AF37] shadow-2xl">
+                {/* Invoice Header */}
+                <div className="bg-gradient-to-r from-[#2C1E16] via-[#4A1525] to-[#2C1E16] text-white p-5 border-b border-[#D4AF37]">
+                  <div className="flex items-center justify-between">
+                    <span className="px-3 py-1 rounded-full bg-[#E11D48] text-white text-[11px] font-extrabold">
+                      پیش‌فاکتور زنده و رسمی عروسی
+                    </span>
+                    <span className="font-mono-num text-xs text-[#E6C258]">
+                      {savedTrackingCode || 'EVM-VIP-LIVE'}
+                    </span>
+                  </div>
+                  <h3 className="text-lg font-black text-[#FAF7F2] mt-2">
+                    {t.invoiceTitle}
+                  </h3>
+                  <p className="text-xs text-[#E6C258] mt-0.5">
+                    محاسبه آنی بر اساس {formatNumberLocale(guestCount, lang)} مهمان و{' '}
+                    {formatNumberLocale(selectedItems.length, lang)} آیتم تشریفاتی
+                  </p>
+                </div>
+
+                <div className="p-5 space-y-4">
+                  {/* Host Info Inputs */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="block text-[11px] font-bold text-[#6E5A4F] mb-1">
+                        نام عروس و داماد / میزبان:
+                      </label>
+                      <input
+                        type="text"
+                        value={customerName}
+                        onChange={(e) => setCustomerName(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-white border border-[#D4AF37]/50 text-xs font-bold text-[#2C1E16]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-[#6E5A4F] mb-1">
+                        واتساپ مدیر تالار (جهت ارسال):
+                      </label>
+                      <input
+                        type="tel"
+                        value={hallManagerWhatsapp}
+                        onChange={(e) => setHallManagerWhatsapp(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-white border border-[#D4AF37]/50 text-xs font-mono-num font-bold text-[#2C1E16]"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Key Financial Numbers */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-3.5 rounded-2xl bg-[#FFF0F3] border border-rose-200">
+                      <div className="text-[11px] font-bold text-[#6E5A4F]">
+                        {t.perGuestCost}
+                      </div>
+                      <div className="font-mono-num text-lg font-black text-[#E11D48] mt-0.5">
+                        {formatMoney(calculation.finalPerGuestToman, currency, lang, liveRates)}
+                      </div>
+                    </div>
+
+                    <div className="p-3.5 rounded-2xl bg-[#FEF9E7] border border-[#D4AF37]/60">
+                      <div className="text-[11px] font-bold text-[#6E5A4F]">
+                        {t.totalContractCost}
+                      </div>
+                      <div className="font-mono-num text-lg font-black text-[#2C1E16] mt-0.5">
+                        {formatMoney(calculation.finalTotalToman, currency, lang, liveRates)}
+                      </div>
+                    </div>
+                  </div>
+
+                  {selectedFlashDate && (
+                    <div className="px-3.5 py-2 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-900 text-xs flex items-center justify-between font-bold">
+                      <span>
+                        🎉 سود شما از تخفیف {selectedFlashDate.persianDate} ({selectedFlashDate.discountPercent}%):
+                      </span>
+                      <span className="font-mono-num">
+                        {formatMoney(calculation.discountAmountToman, currency, lang, liveRates)}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Sayyadi Installment Sliders */}
+                  <div className="p-4 rounded-2xl bg-[#FAF7F2] border border-[#E6DFD3] space-y-3">
+                    <div>
+                      <div className="flex justify-between text-xs font-bold mb-1">
+                        <span>{t.downPaymentPercentLabel}:</span>
+                        <span className="font-mono-num text-[#E11D48]">
+                          {formatNumberLocale(downPaymentPercent, lang)}% (
+                          {formatMoney(calculation.downPaymentToman, currency, lang, liveRates)})
                         </span>
-                        <span className="font-mono-num font-bold text-[#E6C258]">
-                          {formatMoney(
-                            chk.amountToman,
-                            currency,
-                            lang,
-                            liveRates,
-                          )}
+                      </div>
+                      <input
+                        type="range"
+                        min={20}
+                        max={60}
+                        step={5}
+                        value={downPaymentPercent}
+                        onChange={(e) => setDownPaymentPercent(Number(e.target.value))}
+                        className="w-full accent-[#E11D48] cursor-pointer"
+                      />
+                    </div>
+
+                    <div>
+                      <div className="flex justify-between text-xs font-bold mb-1.5">
+                        <span>{t.installmentMonthsLabel}:</span>
+                        <span className="font-mono-num text-[#9A7411]">
+                          {formatNumberLocale(installmentMonths, lang)} فقره چک صیادی بنفش
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-5 gap-1.5">
+                        {[3, 6, 8, 10, 12].map((m) => (
+                          <button
+                            key={m}
+                            onClick={() => setInstallmentMonths(m)}
+                            className={`py-1.5 rounded-xl font-mono-num text-xs font-extrabold border transition cursor-pointer ${
+                              installmentMonths === m
+                                ? 'bg-[#2C1E16] text-[#E6C258] border-[#C59B27]'
+                                : 'bg-white text-[#2C1E16] border-[#E6DFD3]'
+                            }`}
+                          >
+                            {formatNumberLocale(m, lang)} ماهه
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="pt-2 border-t border-[#E6DFD3] flex items-center justify-between">
+                      <span className="text-xs font-extrabold text-[#2C1E16]">
+                        {t.eachCheckAmount}:
+                      </span>
+                      <span className="font-mono-num text-base font-black text-[#E11D48]">
+                        {formatMoney(calculation.eachCheckToman, currency, lang, liveRates)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Generated Purple Sayyadi Checks Schedule Preview */}
+                  <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1">
+                    <div className="text-xs font-extrabold text-[#2C1E16] flex items-center justify-between">
+                      <span>🏦 جدول سررسید چک‌های صیادی بنفش:</span>
+                      <span className="text-[11px] text-emerald-700">بدون بهره در جشنواره</span>
+                    </div>
+                    {calculation.checks.map((chk) => (
+                      <div
+                        key={chk.checkNumber}
+                        className="px-3 py-2 rounded-xl bg-purple-50/70 border border-purple-200 flex items-center justify-between text-xs"
+                      >
+                        <div>
+                          <span className="font-extrabold text-purple-950">
+                            چک {formatNumberLocale(chk.checkNumber, lang)}:
+                          </span>{' '}
+                          <span className="text-[#6E5A4F]">{chk.dueDatePersian}</span>
+                          <div className="font-mono-num text-[10px] text-purple-700">
+                            شناسه صیادی: {chk.sayyadiId}
+                          </div>
+                        </div>
+                        <span className="font-mono-num font-extrabold text-purple-950">
+                          {formatMoney(chk.amountToman, currency, lang, liveRates)}
                         </span>
                       </div>
                     ))}
                   </div>
-                </div>
 
-                {/* Host & Venue Manager Contact Inputs */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
-                  <div>
-                    <label className="block text-[11px] font-bold text-[#6E5A4F] mb-1">
-                      نام میزبان / عروس و داماد:
-                    </label>
-                    <input
-                      type="text"
-                      value={customerName}
-                      onChange={(e) => setCustomerName(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-[#FAF7F2] border border-[#E6DFD3] text-xs text-[#2C1E16]"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-bold text-[#6E5A4F] mb-1">
-                      شماره واتساپ مدیر تالار:
-                    </label>
-                    <input
-                      type="tel"
-                      value={managerWhatsApp}
-                      onChange={(e) => setManagerWhatsApp(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-[#FAF7F2] border border-[#E6DFD3] text-xs font-mono-num text-[#2C1E16]"
-                    />
-                  </div>
-                </div>
+                  {/* Action Buttons: Voice Readout, WhatsApp, Gmail, Server Save */}
+                  <div className="space-y-2.5 pt-2">
+                    <button
+                      onClick={isSpeaking ? handleStopSpeaking : handleSpeakInvoice}
+                      className="w-full py-3 rounded-xl bg-[#F4EFE6] hover:bg-[#E6DFD3] text-[#2C1E16] border border-[#C59B27] font-extrabold text-xs flex items-center justify-center gap-2 transition cursor-pointer"
+                    >
+                      {isSpeaking ? (
+                        <>
+                          <VolumeX className="w-4 h-4 text-[#E11D48]" />
+                          <span>{t.stopSpeakBtn}</span>
+                        </>
+                      ) : (
+                        <>
+                          <Volume2 className="w-4 h-4 text-[#E11D48]" />
+                          <span>{t.speakInvoiceBtn}</span>
+                        </>
+                      )}
+                    </button>
 
-                {/* Action Buttons: WhatsApp, Gmail, Voice Readout, Save Contract */}
-                <div className="space-y-2.5 pt-2">
-                  <div className="flex gap-2">
-                    <a
-                      href={whatsAppUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex-1 py-3 px-4 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md transition"
+                    <button
+                      onClick={handleSendWhatsApp}
+                      className="w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-700 text-white font-extrabold text-xs shadow-lg hover:brightness-105 flex items-center justify-center gap-2 transition cursor-pointer"
                     >
                       <Send className="w-4 h-4" />
-                      {t.sendWhatsAppBtn}
-                    </a>
-                    <button
-                      onClick={() =>
-                        setWhatsAppPreviewOpen(!whatsAppPreviewOpen)
-                      }
-                      className="px-3 py-3 rounded-xl bg-emerald-50 text-emerald-900 border border-emerald-300 text-xs font-bold hover:bg-emerald-100 transition"
-                      title="پیش‌نمایش و کپی متن واتساپ"
-                    >
-                      <Copy className="w-4 h-4" />
+                      <span>{t.sendWhatsappBtn}</span>
                     </button>
-                  </div>
 
-                  {whatsAppPreviewOpen && (
-                    <div className="p-3 rounded-xl bg-emerald-50/90 border border-emerald-300 space-y-2">
-                      <div className="flex items-center justify-between text-xs font-bold text-emerald-950">
-                        <span>متن آماده ارسال به واتساپ مدیر تالار:</span>
-                        <button
-                          onClick={() => {
-                            navigator.clipboard.writeText(
-                              whatsAppFormattedMessage,
-                            );
-                            setCopiedWhatsApp(true);
-                            setTimeout(() => setCopiedWhatsApp(false), 2000);
-                          }}
-                          className="flex items-center gap-1 text-emerald-800 underline"
-                        >
-                          {copiedWhatsApp ? (
-                            <>
-                              <Check className="w-3.5 h-3.5" /> کپی شد
-                            </>
-                          ) : (
-                            <>
-                              <Copy className="w-3.5 h-3.5" /> کپی متن کامل
-                            </>
-                          )}
-                        </button>
-                      </div>
-                      <pre className="text-[11px] text-emerald-950 whitespace-pre-wrap font-sans leading-relaxed max-h-40 overflow-y-auto bg-white p-2.5 rounded-lg border border-emerald-200">
-                        {whatsAppFormattedMessage}
-                      </pre>
-                    </div>
-                  )}
-
-                  <button
-                    onClick={() => setIsGmailModalOpen(true)}
-                    className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-[#D4AF37] to-[#AA8215] text-[#1E130D] font-bold text-xs flex items-center justify-center gap-2 shadow-md hover:brightness-105 transition"
-                  >
-                    <Mail className="w-4 h-4" />
-                    {t.sendGmailBtn}
-                  </button>
-
-                  <div className="grid grid-cols-2 gap-2">
                     <button
-                      onClick={handleSaveOfficialContract}
+                      onClick={() => setGmailModalOpen(true)}
+                      className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[#E11D48] via-[#F43F5E] to-[#D4AF37] text-white font-extrabold text-xs shadow-lg hover:brightness-105 flex items-center justify-center gap-2 transition cursor-pointer"
+                    >
+                      <Mail className="w-4 h-4" />
+                      <span>{t.sendGmailBtn}</span>
+                    </button>
+
+                    <button
+                      onClick={handleSaveReservation}
                       disabled={savingContract}
-                      className="py-2.5 px-3 rounded-xl bg-[#2C1E16] text-[#E6C258] font-bold text-xs flex items-center justify-center gap-1.5 hover:bg-[#3E2723] transition"
+                      className="w-full py-2.5 rounded-xl bg-[#2C1E16] text-[#E6C258] font-bold text-xs hover:bg-[#3E2723] flex items-center justify-center gap-2 transition cursor-pointer"
                     >
-                      <CheckCircle2 className="w-4 h-4" />
-                      {savingContract ? 'در حال ثبت...' : t.saveOfficialBtn}
-                    </button>
-
-                    <button
-                      onClick={() => setIsStoryModalOpen(true)}
-                      className="py-2.5 px-3 rounded-xl bg-[#FAF7F2] text-[#2C1E16] border border-[#C59B27] font-bold text-xs flex items-center justify-center gap-1.5 hover:bg-[#F3EDE2] transition"
-                    >
-                      <Camera className="w-4 h-4 text-[#9A7411]" />
-                      خروجی استوری HD
+                      <FileCheck2 className="w-4 h-4" />
+                      <span>
+                        {savingContract ? 'در حال ثبت در سرور...' : t.saveServerBtn}
+                      </span>
                     </button>
                   </div>
-
-                  {savedTrackingCode && (
-                    <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-950 text-xs font-bold flex items-center justify-between">
-                      <span>✅ پیش‌فاکتور رسمی ثبت شد:</span>
-                      <span className="font-mono-num px-2.5 py-1 rounded bg-white border border-emerald-300">
-                        {savedTrackingCode}
-                      </span>
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* SECTION 2: SMART FLASH DATES CALENDAR (تقویم هوشمند شب‌های خالی تالار با تخفیف ویژه لحظه آخری) */}
-      <section
-        id="flash-dates"
-        className="bg-[#F4EFE6] border-y border-[#E6DFD3] py-12 px-4 adhd-dimmable"
-      >
-        <div className="max-w-[1440px] mx-auto space-y-6">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <div className="inline-flex items-center gap-1.5 text-xs font-bold text-red-800 bg-red-100 px-3 py-1 rounded-md mb-2">
-                <Flame className="w-4 h-4" />
-                <span>FLASH DATES • تخفیف‌های لحظه آخری شب‌های خالی تالار</span>
-              </div>
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-[#2C1E16]">
-                {t.flashDatesTitle}
-              </h2>
-              <p className="text-sm text-[#6E5A4F] mt-1">
-                {t.flashDatesSubtitle}
-              </p>
-            </div>
-
-            {flashDiscountPercent > 0 && (
-              <button
-                onClick={() => {
-                  setActiveFlashDateId(null);
-                  setFlashDiscountPercent(0);
-                }}
-                className="px-4 py-2 rounded-xl bg-white border border-[#C59B27] text-xs font-bold text-[#2C1E16] hover:bg-[#FAF7F2]"
-              >
-                حذف تخفیف تاریخ لحظه آخری ({flashDiscountPercent}٪)
-              </button>
-            )}
+        {/* 6. SHOWCASE OF 10 AUTHENTIC VENUE & CATERING PACKAGES (UNSPLASH VERIFIED) */}
+        <section id="packages" className="py-10 adhd-dimmable">
+          <div className="mb-6">
+            <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-amber-100 text-[#9A7411] text-xs font-extrabold border border-amber-300">
+              <Crown className="w-4 h-4 text-[#E11D48]" />
+              <span>۱۰ پکیج واقعی عروسی، نامزدی، باغ‌عمارت و کترینگ VIP</span>
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-black text-[#2C1E16] mt-2">
+              {t.packagesTitle}
+            </h2>
+            <p className="text-xs sm:text-sm text-[#6E5A4F] mt-1">{t.packagesSub}</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {FLASH_DATES.map((fd) => {
-              const isSelected = activeFlashDateId === fd.id;
-              return (
-                <div
-                  key={fd.id}
-                  className={`luxury-card rounded-2xl p-5 border flex flex-col justify-between transition ${
-                    isSelected
-                      ? 'bg-[#2C1E16] text-[#FAF7F2] border-2 border-[#C59B27] shadow-xl'
-                      : 'bg-[#FFFDF9] text-[#2C1E16] border-[#C59B27]/40 hover:border-[#C59B27]'
-                  }`}
-                >
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="px-3 py-1 rounded-lg bg-red-700 text-white font-mono-num font-extrabold text-xs">
-                        {fd.discountPercent}% OFF
-                      </span>
-                      <span
-                        className={`text-xs font-bold flex items-center gap-1 ${
-                          isSelected ? 'text-[#E6C258]' : 'text-[#9A7411]'
-                        }`}
-                      >
-                        <Calendar className="w-3.5 h-3.5" />
-                        {fd.dayName[lang]}
-                      </span>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {VENUE_PACKAGES.map((pkg) => (
+              <div
+                key={pkg.id}
+                className="luxury-card rounded-3xl overflow-hidden bg-white border-2 border-[#E6DFD3] hover:border-[#E11D48] shadow-lg hover:shadow-2xl transition flex flex-col justify-between group"
+              >
+                <div>
+                  <div className="relative h-52 overflow-hidden">
+                    <img
+                      src={pkg.image}
+                      alt={pkg.title[lang]}
+                      className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
+                      loading="lazy"
+                    />
+                    <div className="absolute top-3 right-3 px-3 py-1 rounded-full bg-[#2C1E16]/90 text-[#E6C258] text-xs font-extrabold backdrop-blur-sm">
+                      {pkg.categoryBadge[lang]}
                     </div>
-
-                    <div>
-                      <div className="text-lg font-extrabold">
-                        {fd.persianDate}
-                      </div>
-                      <div
-                        className={`text-sm font-bold mt-0.5 ${
-                          isSelected ? 'text-[#E6C258]' : 'text-[#3E2723]'
-                        }`}
-                      >
-                        {fd.venueName[lang]}
-                      </div>
+                    <div className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-white/95 text-[#2C1E16] font-mono-num text-xs font-black flex items-center gap-1 shadow">
+                      <Star className="w-3.5 h-3.5 text-[#D4AF37] fill-[#D4AF37]" />
+                      <span>{pkg.rating}</span>
                     </div>
-
-                    <p
-                      className={`text-xs leading-relaxed ${
-                        isSelected ? 'text-[#E6DFD3]' : 'text-[#6E5A4F]'
-                      }`}
-                    >
-                      {fd.reasonBadge[lang]}
-                    </p>
-
-                    <div
-                      className={`p-3 rounded-xl text-xs font-bold ${
-                        isSelected
-                          ? 'bg-white/10 text-[#E6C258]'
-                          : 'bg-[#FAF7F2] text-[#2C1E16] border border-[#E6DFD3]'
-                      }`}
-                    >
-                      🎁 {fd.giftBonus[lang]}
+                    <div className="absolute bottom-3 right-3 px-3 py-1 rounded-xl bg-[#E11D48] text-white text-xs font-extrabold shadow">
+                      اقساط {formatNumberLocale(pkg.sayyadiMonths, lang)} ماهه چک صیادی
                     </div>
                   </div>
 
+                  <div className="p-5 space-y-2.5">
+                    <div className="text-xs font-bold text-[#9A7411]">
+                      📍 {pkg.location[lang]} • ظرفیت: {pkg.capacityRange}
+                    </div>
+                    <h3 className="font-black text-base text-[#2C1E16] leading-snug">
+                      {pkg.title[lang]}
+                    </h3>
+                    <p className="text-xs text-[#6E5A4F] leading-relaxed">
+                      {pkg.highlights[lang]}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="p-5 pt-3 border-t border-[#E6DFD3] space-y-3 bg-[#FAF7F2]/60">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-[#6E5A4F]">نرخ پایه هر نفر:</span>
+                    <span className="font-mono-num text-base font-black text-[#E11D48]">
+                      {formatMoney(pkg.pricePerGuestToman, currency, lang, liveRates)}
+                    </span>
+                  </div>
                   <button
-                    onClick={() => handleApplyFlashDate(fd.id)}
-                    className={`mt-4 w-full py-2.5 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition ${
-                      isSelected
-                        ? 'bg-[#C59B27] text-[#1E130D]'
-                        : 'bg-[#2C1E16] text-[#E6C258] hover:bg-[#3E2723]'
-                    }`}
+                    onClick={() => handleApplyPackage(pkg)}
+                    className="w-full py-3 rounded-xl bg-gradient-to-r from-[#E11D48] via-[#F43F5E] to-[#D4AF37] text-white font-extrabold text-xs shadow hover:brightness-105 transition cursor-pointer flex items-center justify-center gap-1.5"
                   >
-                    <CheckCircle2 className="w-4 h-4" />
-                    {isSelected
-                      ? 'این تاریخ و تخفیف روی فاکتور شما فعال است'
-                      : t.applyFlashDiscountBtn}
+                    <PartyPopper className="w-4 h-4" />
+                    <span>{t.applyPackageBtn}</span>
                   </button>
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* SECTION 3: 10 AUTHENTIC VENUE & CATERING PACKAGES SHOWCASE */}
-      <section
-        id="venue-packages"
-        className="max-w-[1440px] mx-auto w-full px-4 py-12 space-y-6 adhd-dimmable"
-      >
-        <div>
-          <div className="inline-flex items-center gap-1.5 text-xs font-bold text-[#9A7411] bg-[#C59B27]/15 px-3 py-1 rounded-md mb-2">
-            <Crown className="w-4 h-4" />
-            <span>10 ROYAL VENUE & CATERING PACKAGES</span>
-          </div>
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-[#2C1E16]">
-            {t.packagesTitle}
-          </h2>
-          <p className="text-sm text-[#6E5A4F] mt-1">{t.packagesSubtitle}</p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {VENUE_PACKAGES.map((pkg) => (
-            <div
-              key={pkg.id}
-              className="luxury-card rounded-2xl bg-[#FFFDF9] border border-[#C59B27]/50 shadow-md overflow-hidden flex flex-col justify-between hover:shadow-xl transition"
-            >
-              <div>
-                <div className="relative h-56 bg-[#2C1E16] overflow-hidden">
-                  <img
-                    src={pkg.image}
-                    alt={pkg.title[lang]}
-                    onError={(e) => {
-                      (e.currentTarget as HTMLImageElement).src =
-                        FALLBACK_LUXURY_IMAGE;
-                    }}
-                    className="w-full h-full object-cover transition duration-500 hover:scale-105"
-                  />
-                  <div className="absolute top-3 right-3 left-3 flex items-center justify-between">
-                    <span className="px-3 py-1 rounded-lg bg-[#2C1E16]/90 text-[#E6C258] text-xs font-bold border border-[#C59B27]">
-                      {pkg.categoryBadge[lang]}
-                    </span>
-                    <span className="px-2.5 py-1 rounded-lg bg-white/95 text-[#2C1E16] font-mono-num font-bold text-xs flex items-center gap-1">
-                      <Star className="w-3.5 h-3.5 fill-[#C59B27] text-[#C59B27]" />
-                      {pkg.rating}
-                    </span>
-                  </div>
-                  <div className="absolute bottom-3 right-3 left-3 flex items-center justify-between bg-[#1E130D]/85 backdrop-blur-sm px-3.5 py-2 rounded-xl border border-[#C59B27]/40 text-[#FAF7F2] text-xs">
-                    <span className="flex items-center gap-1 truncate">
-                      <MapPin className="w-3.5 h-3.5 text-[#E6C258] shrink-0" />
-                      {pkg.location[lang]}
-                    </span>
-                    <span className="font-mono-num text-[#E6C258] font-bold shrink-0">
-                      ظرفیت: {pkg.capacityRange}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="p-5 space-y-3">
-                  <h3 className="font-extrabold text-base sm:text-lg text-[#2C1E16]">
-                    {pkg.title[lang]}
-                  </h3>
-                  <p className="text-xs text-[#6E5A4F] leading-relaxed bg-[#FAF7F2] p-3 rounded-xl border border-[#E6DFD3]">
-                    {pkg.highlights[lang]}
-                  </p>
-                </div>
-              </div>
-
-              <div className="px-5 py-4 bg-[#FAF7F2] border-t border-[#E6DFD3] flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <div className="text-[11px] text-[#6E5A4F]">
-                    شروع قیمت هر نفر (اقساط {pkg.sayyadiMonths} ماهه صیادی):
-                  </div>
-                  <div className="text-lg font-extrabold font-mono-num text-[#9A7411]">
-                    {formatMoney(
-                      pkg.pricePerGuestToman,
-                      currency,
-                      lang,
-                      liveRates,
-                    )}
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => handleLoadPackage(pkg)}
-                  className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#D4AF37] to-[#AA8215] text-[#1E130D] font-bold text-xs flex items-center gap-2 shadow-sm hover:brightness-105 transition"
-                >
-                  <Sparkles className="w-4 h-4" />
-                  {t.loadPackageIntoBuilderBtn}
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* SECTION 4: RECHARTS EXECUTIVE ANALYTICS DASHBOARD */}
-      <section
-        id="recharts-analytics"
-        className="bg-[#F4EFE6] border-t border-[#E6DFD3] py-12 px-4 adhd-dimmable"
-      >
-        <div className="max-w-[1440px] mx-auto space-y-6">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <div className="inline-flex items-center gap-1.5 text-xs font-bold text-[#2C1E16] bg-[#C59B27]/25 px-3 py-1 rounded-md mb-2">
-                <BarChart3 className="w-4 h-4 text-[#9A7411]" />
-                <span>RECHARTS BI ANALYTICS • هوش تجاری تالارها و کترینگ</span>
-              </div>
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-[#2C1E16]">
-                {t.analyticsTitle}
-              </h2>
-              <p className="text-sm text-[#6E5A4F] mt-1">
-                {t.analyticsSubtitle}
-              </p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Chart 1: Most Popular Menus & Satisfaction */}
-            <div className="luxury-card p-6 rounded-2xl bg-[#FFFDF9] border border-[#C59B27]/50 shadow-md space-y-4">
-              <h3 className="font-bold text-base text-[#2C1E16]">
-                {lang === 'FA'
-                  ? 'نمودار محبوب‌ترین غذاها و منوهای مجالس در سال جاری (تعداد سفارش)'
-                  : 'Most Popular Banquet Dishes & Menus (Annual Orders)'}
-              </h3>
-              <div className="h-72 w-full" dir="ltr">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={POPULAR_MENUS_CHART_DATA}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#E6DFD3" />
-                    <XAxis
-                      dataKey={lang === 'FA' ? 'name' : 'nameEn'}
-                      tick={{fill: '#2C1E16', fontSize: 11}}
-                    />
-                    <YAxis tick={{fill: '#2C1E16', fontSize: 11}} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: '#2C1E16',
-                        color: '#FAF7F2',
-                        borderRadius: '12px',
-                        border: '1px solid #C59B27',
-                      }}
-                    />
-                    <Legend />
-                    <Bar
-                      dataKey="orders"
-                      name={
-                        lang === 'FA' ? 'تعداد مجالس رزروشده' : 'Events Ordered'
-                      }
-                      fill="#C59B27"
-                      radius={[8, 8, 0, 0]}
-                    />
-                    <Bar
-                      dataKey="satisfaction"
-                      name={
-                        lang === 'FA' ? 'درصد رضایت مهمانان' : 'Satisfaction %'
-                      }
-                      fill="#2C1E16"
-                      radius={[8, 8, 0, 0]}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            {/* Chart 2: Peak Booking Nights & Flash Deals across 12 Months */}
-            <div className="luxury-card p-6 rounded-2xl bg-[#FFFDF9] border border-[#C59B27]/50 shadow-md space-y-4">
-              <h3 className="font-bold text-base text-[#2C1E16]">
-                {lang === 'FA'
-                  ? 'تحلیل شب‌های پررزرو سال و ضریب اشغال تالارها در ۱۲ ماه'
-                  : '12-Month Peak Wedding Bookings & Venue Occupancy %'}
-              </h3>
-              <div className="h-72 w-full" dir="ltr">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={SEASONAL_BOOKINGS_CHART_DATA}>
-                    <defs>
-                      <linearGradient
-                        id="goldGradient"
-                        x1="0"
-                        y1="0"
-                        x2="0"
-                        y2="1"
-                      >
-                        <stop
-                          offset="5%"
-                          stopColor="#C59B27"
-                          stopOpacity={0.75}
-                        />
-                        <stop
-                          offset="95%"
-                          stopColor="#C59B27"
-                          stopOpacity={0.05}
-                        />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#E6DFD3" />
-                    <XAxis
-                      dataKey={lang === 'FA' ? 'month' : 'monthEn'}
-                      tick={{fill: '#2C1E16', fontSize: 11}}
-                    />
-                    <YAxis tick={{fill: '#2C1E16', fontSize: 11}} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: '#2C1E16',
-                        color: '#FAF7F2',
-                        borderRadius: '12px',
-                        border: '1px solid #C59B27',
-                      }}
-                    />
-                    <Legend />
-                    <Area
-                      type="monotone"
-                      dataKey="weddings"
-                      name={
-                        lang === 'FA'
-                          ? 'شب‌های رزرو کامل'
-                          : 'Booked Wedding Nights'
-                      }
-                      stroke="#9A7411"
-                      strokeWidth={3}
-                      fillOpacity={1}
-                      fill="url(#goldGradient)"
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="flashDeals"
-                      name={
-                        lang === 'FA'
-                          ? 'شب‌های تخفیف‌دار Flash'
-                          : 'Flash Discount Nights'
-                      }
-                      stroke="#2C1E16"
-                      strokeWidth={2}
-                      fill="#2C1E16"
-                      fillOpacity={0.15}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* SECTION 5: 24/7 SMART BANQUET CONCIERGE & OFFLINE AUTO-RESPONDER */}
-      <section className="max-w-[1440px] mx-auto w-full px-4 py-12 adhd-dimmable">
-        <div className="luxury-card rounded-2xl bg-[#2C1E16] text-[#FAF7F2] border-2 border-[#C59B27] p-6 sm:p-8 shadow-xl space-y-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="p-3 rounded-xl bg-[#C59B27]/20 text-[#E6C258]">
-                <MessageSquare className="w-6 h-6" />
-              </div>
-              <div>
-                <h2 className="text-lg sm:text-xl font-extrabold text-[#FAF7F2]">
-                  {t.conciergeTitle}
-                </h2>
-                <p className="text-xs text-[#E6C258]">
-                  اتوماسیون ۱۰۰٪ امن سرور (server.ts) با موتور پاسخگوی خودکار آفلاین و آنلاین
+        {/* 7. OFFLINE + AI SMART BANQUET CONCIERGE (/api/concierge) */}
+        <section className="py-6 adhd-dimmable">
+          <div className="luxury-card rounded-3xl p-6 sm:p-8 bg-gradient-to-r from-[#2C1E16] via-[#3E2723] to-[#2C1E16] text-[#FAF7F2] border-2 border-[#C59B27] shadow-xl">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+              <div className="lg:col-span-7 space-y-2">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#C59B27]/20 text-[#E6C258] text-xs font-bold border border-[#C59B27]/40">
+                  <MessageCircle className="w-4 h-4" />
+                  <span>پاسخگوی خودکار ۲۴ ساعته تشریفات (مجهز به موتور آفلاین + هوش مصنوعی در سرور)</span>
+                </span>
+                <h3 className="text-xl sm:text-2xl font-black text-white">
+                  مشاور هوشمند انتخاب منوی عروسی و بودجه‌بندی چک صیادی
+                </h3>
+                <p className="text-xs sm:text-sm text-[#E6DFD3]">
+                  سؤال خود را درباره ترکیب غذاها، تشریفات گل‌آرایی یا نحوه تقسیط چک صیادی بپرسید تا بلافاصله پاسخ دقیق دریافت کنید:
                 </p>
               </div>
+
+              <form onSubmit={handleAskConcierge} className="lg:col-span-5 flex gap-2">
+                <input
+                  type="text"
+                  value={conciergeQuery}
+                  onChange={(e) => setConciergeQuery(e.target.value)}
+                  placeholder="مثلاً: بهترین منو برای ۳۵۰ نفر با ۶ چک صیادی چیست؟"
+                  className="flex-1 px-4 py-3 rounded-2xl bg-white/10 border border-[#C59B27]/60 text-xs sm:text-sm text-white placeholder-[#D7CCC8] focus:outline-none focus:border-[#E6C258]"
+                />
+                <button
+                  type="submit"
+                  disabled={conciergeLoading}
+                  className="px-5 py-3 rounded-2xl bg-gradient-to-r from-[#E11D48] to-[#D4AF37] text-white font-extrabold text-xs shadow-lg hover:brightness-105 transition cursor-pointer shrink-0"
+                >
+                  {conciergeLoading ? 'در حال محاسبه...' : 'دریافت مشاوره'}
+                </button>
+              </form>
             </div>
-            <span className="px-3 py-1 rounded-lg bg-emerald-900/70 border border-emerald-400/40 text-emerald-200 text-xs font-bold flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4" />
-              پاسخگوی خودکار فعال
-            </span>
-          </div>
 
-          <form
-            onSubmit={handleAskConcierge}
-            className="flex flex-col sm:flex-row gap-3"
-          >
-            <input
-              type="text"
-              value={conciergeQuery}
-              onChange={(e) => setConciergeQuery(e.target.value)}
-              placeholder={t.conciergePlaceholder}
-              className="flex-1 px-4 py-3 rounded-xl bg-[#FFFDF9] text-[#2C1E16] text-sm border border-[#C59B27] focus:outline-none"
-            />
-            <button
-              type="submit"
-              disabled={askingConcierge}
-              className="px-6 py-3 rounded-xl bg-gradient-to-r from-[#D4AF37] to-[#AA8215] text-[#1E130D] font-bold text-sm flex items-center justify-center gap-2 shadow-md hover:brightness-105 transition shrink-0"
-            >
-              <RefreshCw
-                className={`w-4 h-4 ${askingConcierge ? 'animate-spin' : ''}`}
-              />
-              {askingConcierge ? 'در حال محاسبه...' : t.conciergeAskBtn}
-            </button>
-          </form>
-
-          {conciergeReply && (
-            <div className="p-5 rounded-xl bg-[#FFFDF9] text-[#2C1E16] border border-[#C59B27] space-y-2">
-              <div className="flex items-center justify-between text-xs font-bold text-[#9A7411]">
-                <span>پاسخ رسمی مشاور هوشمند تشریفات:</span>
-                <span className="font-mono-num">Mode: {conciergeSource}</span>
-              </div>
-              <div className="text-sm leading-relaxed whitespace-pre-line">
+            {conciergeReply && (
+              <div className="mt-5 p-4 rounded-2xl bg-white/10 border border-[#E6C258]/50 text-xs sm:text-sm leading-relaxed whitespace-pre-line text-[#FFFDF9]">
                 {conciergeReply}
               </div>
-            </div>
-          )}
-        </div>
-      </section>
+            )}
+          </div>
+        </section>
 
-      {/* Royal Footer */}
-      <footer className="mt-auto bg-[#1E130D] text-[#FAF7F2] border-t-2 border-[#C59B27] py-8 px-4">
-        <div className="max-w-[1440px] mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-xs">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-[#2C1E16] border border-[#C59B27] flex items-center justify-center text-[#E6C258] font-bold">
-              EM
+        {/* 8. RECHARTS ANALYTICS & 1-CLICK HD STORY MAKER */}
+        <StoryMakerAnalytics
+          lang={lang}
+          currency={currency}
+          guestCount={guestCount}
+          perGuestToman={calculation.finalPerGuestToman}
+          totalToman={calculation.finalTotalToman}
+          downPaymentToman={calculation.downPaymentToman}
+          installmentMonths={installmentMonths}
+          eachCheckToman={calculation.eachCheckToman}
+          selectedNames={selectedItems.map((i) => i.name[lang])}
+        />
+
+        {/* 9. B2B HALL MARKETER COMMISSION CLUB & SECURE ANDROID APK/AAB CI ENGINE */}
+        <MarketerAndAndroidHub lang={lang} currency={currency} />
+      </main>
+
+      {/* 10. ROYAL FOOTER */}
+      <footer className="mt-12 bg-[#2C1E16] text-[#FAF7F2] border-t-4 border-[#C59B27] py-10 px-4">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="space-y-1 text-center md:text-start">
+            <div className="text-lg font-black text-[#E6C258] flex items-center justify-center md:justify-start gap-2">
+              <Crown className="w-5 h-5 text-[#E11D48]" />
+              <span>EventMate VIP | ایونت‌مِیت</span>
             </div>
-            <div>
-              <div className="font-bold text-sm text-[#E6C258]">
-                EventMate VIP | ایونت‌مِیت
-              </div>
-              <div className="text-[#E6DFD3]/80">
-                اکوسیستم آفرینش | شهر جدید نیومتاورسیتی جهان | توان استیج FBNM
-              </div>
-            </div>
+            <p className="text-xs text-[#E6DFD3]">
+              اکوسیستم آفرینش | شهر جدید نیومتاورسیتی جهان | توان استیج FBNM
+            </p>
+            <p className="text-[11px] text-[#B09B8E]">
+              پکیج رسمی اندروید: com.eventmate.vip • پشتیبانی از ۵ زبان و ۵ ارز زنده • استاندارد دسترسی‌پذیری کم‌بینایان و ADHD
+            </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center justify-center gap-3 text-xs">
             <button
-              onClick={() => setIsPwaModalOpen(true)}
-              className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-[#E6C258] font-bold transition"
+              onClick={() => setA11yOpen(true)}
+              className="px-4 py-2 rounded-xl bg-[#3E2723] text-[#E6C258] border border-[#C59B27]/40 hover:bg-[#4E342E] cursor-pointer"
+            >
+              پنل دسترسی‌پذیری و خوانش صوتی
+            </button>
+            <button
+              onClick={() => setGmailModalOpen(true)}
+              className="px-4 py-2 rounded-xl bg-[#3E2723] text-white border border-[#C59B27]/40 hover:bg-[#4E342E] cursor-pointer"
+            >
+              ارسال فاکتور با Gmail
+            </button>
+            <button
+              onClick={handleInstallPwaClick}
+              className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#E11D48] to-[#D4AF37] text-white font-bold cursor-pointer"
             >
               نصب وب‌اپلیکیشن (PWA)
-            </button>
-            <button
-              onClick={() => setIsAndroidModalOpen(true)}
-              className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-[#E6C258] font-bold transition"
-            >
-              پروژه اندروید (com.eventmate.vip)
-            </button>
-            <button
-              onClick={() => setIsVipClubModalOpen(true)}
-              className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-[#E6C258] font-bold transition"
-            >
-              باشگاه ویزیتورهای پورسانتی
             </button>
           </div>
         </div>
       </footer>
 
-      {/* MODALS & FLOATING SUITES */}
+      {/* MODALS */}
       <AccessibilityPanel
-        isOpen={isA11yOpen}
-        onClose={() => setIsA11yOpen(false)}
+        isOpen={a11yOpen}
+        onClose={() => setA11yOpen(false)}
         settings={a11y}
         onUpdateSettings={setA11y}
+        lang={lang}
+        currency={currency}
+        guestCount={guestCount}
+        perGuestToman={calculation.finalPerGuestToman}
+        totalToman={calculation.finalTotalToman}
+        downPaymentToman={calculation.downPaymentToman}
+        installmentMonths={installmentMonths}
+        eachCheckToman={calculation.eachCheckToman}
+        selectedNames={selectedItems.map((i) => i.name[lang])}
+        isSpeaking={isSpeaking}
         onSpeakInvoice={handleSpeakInvoice}
         onStopSpeaking={handleStopSpeaking}
-        isSpeaking={isSpeaking}
-        lang={lang}
-        spokenPreviewText={spokenInvoiceText}
       />
 
-      <InstallPrompt
-        lang={lang}
-        forceOpenModal={isPwaModalOpen}
-        onCloseModal={() => setIsPwaModalOpen(false)}
-        onOpenAndroidStudioModal={() => setIsAndroidModalOpen(true)}
-      />
-
-      <StoryMakerModal
-        isOpen={isStoryModalOpen}
-        onClose={() => setIsStoryModalOpen(false)}
+      <GmailInvoiceModal
+        isOpen={gmailModalOpen}
+        onClose={() => setGmailModalOpen(false)}
         lang={lang}
         currency={currency}
-        rates={liveRates}
-        venueTitle={selectedVenueTitle}
-        guestCount={guestCount}
-        servingStyleTitle={currentStyleObj.title[lang]}
-        perGuestToman={calculation.effectivePerGuestToman}
-        totalContractToman={calculation.netTotalContractToman}
-        downPaymentToman={calculation.downPaymentToman}
-        installmentMonths={installmentMonths}
-        eachCheckToman={calculation.eachCheckToman}
-        selectedItemNames={selectedItemsObjects.map((i) => i.name[lang])}
-        flashDiscountPercent={flashDiscountPercent}
-      />
-
-      <GmailCenterModal
-        isOpen={isGmailModalOpen}
-        onClose={() => setIsGmailModalOpen(false)}
-        lang={lang}
-        currency={currency}
-        rates={liveRates}
         customerName={customerName}
-        customerPhone={customerPhone}
-        eventDate={eventDate}
-        venueTitle={selectedVenueTitle}
+        eventDate={selectedFlashDate ? selectedFlashDate.persianDate : 'پاییز ۱۴۰۵'}
         guestCount={guestCount}
-        servingStyleTitle={currentStyleObj.title[lang]}
-        perGuestToman={calculation.effectivePerGuestToman}
-        totalContractToman={calculation.netTotalContractToman}
+        servingStyleTitle={servingStyle.title[lang]}
+        perGuestToman={calculation.finalPerGuestToman}
+        totalToman={calculation.finalTotalToman}
         downPaymentToman={calculation.downPaymentToman}
         installmentMonths={installmentMonths}
         eachCheckToman={calculation.eachCheckToman}
-        selectedItemNames={selectedItemsObjects.map((i) => i.name[lang])}
-        sayyadiChecks={calculation.sayyadiChecks}
+        selectedItemNames={selectedItems.map((i) => i.name[lang])}
+        checks={calculation.checks}
       />
 
-      <VipVisitorClubModal
-        isOpen={isVipClubModalOpen}
-        onClose={() => setIsVipClubModalOpen(false)}
-        lang={lang}
-        currency={currency}
-        rates={liveRates}
-      />
+      {/* VIP Hall Subscription Modal */}
+      {vipModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#1E130D]/60 backdrop-blur-sm p-4">
+          <div className="w-full max-w-xl rounded-3xl bg-[#FFFDF9] border-2 border-[#D4AF37] shadow-2xl overflow-hidden p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-[#E6DFD3] pb-3">
+              <div className="flex items-center gap-2">
+                <Crown className="w-6 h-6 text-[#E11D48]" />
+                <h3 className="font-black text-lg text-[#2C1E16]">
+                  اشتراک اختصاصی تالارداران و باغ‌عمارت‌ها (EventMate VIP SaaS)
+                </h3>
+              </div>
+              <button
+                onClick={() => setVipModalOpen(false)}
+                className="p-1.5 rounded-xl bg-[#FAF7F2] text-[#2C1E16]"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="space-y-3 text-xs sm:text-sm text-[#2C1E16]">
+              <div className="p-4 rounded-2xl bg-[#FFF0F3] border border-rose-300">
+                <div className="font-black text-[#E11D48] text-base">
+                  پکیج سالانه تالار و باغ‌تالار: ۴۸,۰۰۰,۰۰۰ تومان / سال
+                </div>
+                <p className="text-xs text-[#6E5A4F] mt-1">
+                  شامل منوساز اختصاصی با لوگوی تالار شما، تقویم شب‌های خالی (Flash Dates)، محاسبه‌گر چک صیادی، استوری‌ساز HD و ارسال مستقیم پیش‌فاکتور به واتساپ و جیمیل.
+                </p>
+                <div className="mt-2 font-bold text-emerald-800 text-xs">
+                  💎 پورسانت بازاریاب معرف تالار: ۳۵٪ نقدی آنی (۱۶,۸۰۰,۰۰۰ تومان) + ۱۰٪ تمدید سالانه
+                </div>
+              </div>
+              <div className="p-4 rounded-2xl bg-[#FEF9E7] border border-[#D4AF37]">
+                <div className="font-black text-[#9A7411] text-base">
+                  پکیج سازمانی هتل‌های ۵ ستاره و مجموعه‌های زنجیره‌ای: ۹۶,۰۰۰,۰۰۰ تومان / سال
+                </div>
+                <p className="text-xs text-[#6E5A4F] mt-1">
+                  پشتیبانی از ۵ زبان و ۵ ارز زنده، اپلیکیشن اختصاصی اندروید و اتصال مستقیم به CRM مجموعه.
+                </p>
+                <div className="mt-2 font-bold text-emerald-800 text-xs">
+                  💎 پورسانت بازاریاب معرف هتل: ۳۰٪ نقدی آنی (۲۸,۸۰۰,۰۰۰ تومان) + ۱۲٪ تمدید سالانه
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <a
+                href="#marketers"
+                onClick={() => setVipModalOpen(false)}
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#E11D48] to-[#D4AF37] text-white font-extrabold text-xs"
+              >
+                مشاهده باشگاه بازاریابان و دریافت کد سفیر
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
 
-      <AndroidGithubModal
-        isOpen={isAndroidModalOpen}
-        onClose={() => setIsAndroidModalOpen(false)}
-        lang={lang}
-      />
+      {/* 1-Click PWA Install Guide Modal for iOS / Android / Desktop */}
+      {pwaModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#1E130D]/60 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md rounded-3xl bg-[#FFFDF9] border-2 border-[#D4AF37] shadow-2xl p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-[#E6DFD3] pb-3">
+              <div className="flex items-center gap-2">
+                <Smartphone className="w-6 h-6 text-[#E11D48]" />
+                <h3 className="font-black text-base text-[#2C1E16]">
+                  نصب ۱-کلیکی EventMate VIP روی آیفون و اندروید
+                </h3>
+              </div>
+              <button
+                onClick={() => setPwaModalOpen(false)}
+                className="p-1.5 rounded-xl bg-[#FAF7F2]"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="space-y-3 text-xs text-[#2C1E16] leading-relaxed">
+              <div className="p-3.5 rounded-2xl bg-[#FFF0F3] border border-rose-200">
+                <b>📱 در آیفون و آیپد (Safari):</b> روی دکمه <b>Share</b> (مربع با فلش رو به بالا در پایین مرورگر) بزنید و گزینه <b>Add to Home Screen</b> را انتخاب کنید.
+              </div>
+              <div className="p-3.5 rounded-2xl bg-[#FEF9E7] border border-[#D4AF37]/50">
+                <b>🤖 در اندروید و کروم:</b> از منوی سه نقطه بالای مرورگر گزینه <b>Install App (نصب برنامه)</b> را انتخاب کنید یا از بخش پایینی صفحه خروجی مستقیم <b>APK</b> را دریافت نمایید.
+              </div>
+            </div>
+            <button
+              onClick={() => setPwaModalOpen(false)}
+              className="w-full py-2.5 rounded-xl bg-[#2C1E16] text-[#E6C258] font-bold text-xs"
+            >
+              متوجه شدم
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
