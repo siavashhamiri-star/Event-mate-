@@ -59,6 +59,12 @@ import {
   CustomHallBrand,
   WhiteLabelAndVisitorSuite,
 } from './components/WhiteLabelAndVisitorSuite';
+import {
+  FamilySplitState,
+  HallValueAndCreativeSuite,
+  SayyadiInquiryState,
+} from './components/HallValueAndCreativeSuite';
+import {HallBenefitsAndVisitorPlaybook} from './components/HallBenefitsAndVisitorPlaybook';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -79,10 +85,13 @@ export default function App() {
     fontScale: 100,
     highContrast: false,
     adhdFocusMode: false,
+    adhdReadingGuide: false,
+    motorLargeTargets: false,
     readableSpacing: false,
     voiceRate: 1.0,
   });
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [readingGuideY, setReadingGuideY] = useState<number>(260);
 
   // Menu Builder & Sayyadi Calculator State
   const [guestCount, setGuestCount] = useState<number>(300);
@@ -104,19 +113,67 @@ export default function App() {
     FLASH_DATES[0],
   );
 
-  // White-Label Custom Hall / Agency Branding State (Customizable from the very start or via URL)
+  // White-Label Custom Hall / Agency Branding State (Isolated per ?hall=royal-palace tenant)
   const [customBrand, setCustomBrand] = useState<CustomHallBrand>(() => {
     const params = new URLSearchParams(window.location.search);
-    const defaultPreset = HALL_BRAND_PRESETS[0];
+    const hallParam = (params.get('hall') || '').trim();
+    const matchedPreset =
+      HALL_BRAND_PRESETS.find(
+        (p) =>
+          p.slug.toLowerCase() === hallParam.toLowerCase() ||
+          p.hallName === hallParam,
+      ) || HALL_BRAND_PRESETS[0];
+
+    const tenantSlug =
+      matchedPreset.slug === hallParam.toLowerCase()
+        ? matchedPreset.slug
+        : hallParam
+          ? hallParam.toLowerCase().replace(/[^a-z0-9]/g, '-') || 'custom-hall'
+          : matchedPreset.slug;
+
+    try {
+      const savedIsolated = localStorage.getItem(`eventmate_tenant_${tenantSlug}`);
+      if (savedIsolated && !hallParam) {
+        return JSON.parse(savedIsolated) as CustomHallBrand;
+      }
+    } catch {
+      // Ignore storage error
+    }
+
     return {
-      hallName: params.get('hall') || defaultPreset.hallName,
-      agencyType: defaultPreset.agencyType,
-      managerName: params.get('manager') || defaultPreset.managerName,
-      city: params.get('city') || defaultPreset.city,
-      whatsapp: params.get('phone') || defaultPreset.whatsapp,
-      slogan: defaultPreset.slogan,
-      priceMultiplier: defaultPreset.priceMultiplier,
+      tenantSlug,
+      logoMonogram: matchedPreset.logoMonogram,
+      hallName:
+        hallParam && hallParam.toLowerCase() !== matchedPreset.slug
+          ? hallParam
+          : matchedPreset.hallName,
+      agencyType: matchedPreset.agencyType,
+      managerName: params.get('manager') || matchedPreset.managerName,
+      city: params.get('city') || matchedPreset.city,
+      whatsapp: params.get('phone') || matchedPreset.whatsapp,
+      slogan: matchedPreset.slogan,
+      priceMultiplier: matchedPreset.priceMultiplier,
     };
+  });
+
+  // New Value Drivers & Creative Memorial Modules State
+  const [inflationShieldEnabled, setInflationShieldEnabled] = useState<boolean>(true);
+  const [weatherInsuranceEnabled, setWeatherInsuranceEnabled] = useState<boolean>(true);
+  const [barakatCharityEnabled, setBarakatCharityEnabled] = useState<boolean>(true);
+  const [sayyadiInquiry, setSayyadiInquiry] = useState<SayyadiInquiryState>({
+    sayyadiId: '1405889040591820',
+    nationalId: '0012345678',
+    statusColor: 'WHITE',
+    statusLabel: 'وضعیت سفید (خوش‌حساب ممتاز — فاقد هرگونه چک برگشتی)',
+    creditScore: 895,
+    bouncedCount: 0,
+    hallRecommendation:
+      'مورد تایید ۱۰۰٪ تالار — مجاز به تقسیط کامل ۳ تا ۱۲ ماهه با چک صیادی بنفش.',
+  });
+  const [familySplit, setFamilySplit] = useState<FamilySplitState>({
+    couplePercent: 50,
+    groomFamilyPercent: 30,
+    brideFamilyPercent: 20,
   });
 
   // Customer & Contract Details
@@ -127,9 +184,22 @@ export default function App() {
   );
 
   const handleUpdateBrand = (nextBrand: CustomHallBrand) => {
-    setCustomBrand(nextBrand);
-    if (nextBrand.whatsapp) {
-      setHallManagerWhatsapp(nextBrand.whatsapp);
+    const slug =
+      nextBrand.tenantSlug ||
+      nextBrand.hallName
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '-')
+        .replace(/-+/g, '-') ||
+      'royal-palace';
+    const enriched = {...nextBrand, tenantSlug: slug};
+    setCustomBrand(enriched);
+    if (enriched.whatsapp) {
+      setHallManagerWhatsapp(enriched.whatsapp);
+    }
+    try {
+      localStorage.setItem(`eventmate_tenant_${slug}`, JSON.stringify(enriched));
+    } catch {
+      // Ignore storage error
     }
   };
   const [savedTrackingCode, setSavedTrackingCode] = useState<string | null>(null);
@@ -152,18 +222,34 @@ export default function App() {
   const currentLangMeta = LANGUAGES.find((l) => l.code === lang) || LANGUAGES[0];
   const t = UI_TEXT[lang];
 
-  // Sync HTML dir/lang and Accessibility classes
+  // Sync HTML dir/lang, isolated Hall page title, and Accessibility classes
   useEffect(() => {
     document.documentElement.dir = currentLangMeta.dir;
     document.documentElement.lang = lang.toLowerCase();
-  }, [lang, currentLangMeta]);
+    document.title = `${customBrand.hallName} | سامانه منوساز و چک صیادی EventMate VIP`;
+  }, [lang, currentLangMeta, customBrand.hallName]);
 
   useEffect(() => {
     document.body.classList.toggle('a11y-high-contrast', a11y.highContrast);
     document.body.classList.toggle('a11y-adhd-focus', a11y.adhdFocusMode);
     document.body.classList.toggle('a11y-readable-spacing', a11y.readableSpacing);
+    document.body.classList.toggle('a11y-motor-large', Boolean(a11y.motorLargeTargets));
     document.documentElement.style.fontSize = `${a11y.fontScale}%`;
   }, [a11y]);
+
+  useEffect(() => {
+    if (!a11y.adhdReadingGuide) return;
+    const onMove = (e: MouseEvent) => setReadingGuideY(e.clientY);
+    const onTouch = (e: TouchEvent) => {
+      if (e.touches?.[0]) setReadingGuideY(e.touches[0].clientY);
+    };
+    window.addEventListener('mousemove', onMove, {passive: true});
+    window.addEventListener('touchmove', onTouch, {passive: true});
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('touchmove', onTouch);
+    };
+  }, [a11y.adhdReadingGuide]);
 
   // Fetch live exchange rates from server.ts
   useEffect(() => {
@@ -285,9 +371,13 @@ export default function App() {
     const speechText =
       lang === 'FA'
         ? `به سامانه ایونت‌میت خوش آمدید. خلاصه پیش‌فاکتور رسمی جشن عروسی شما برای ${guestCount} نفر مهمان، با سبک پذیرایی ${servingStyle.title.FA}. هزینه تمام‌شده هر نفر، ${formatMoney(calculation.finalPerGuestToman, currency, lang)}. جمع کل قرارداد پس از تخفیف، ${formatMoney(calculation.finalTotalToman, currency, lang)}. مبلغ پیش‌پرداخت نقدی، ${formatMoney(calculation.downPaymentToman, currency, lang)}، و مانده در ${installmentMonths} فقره چک صیادی، هر برگ چک به مبلغ ${formatMoney(calculation.eachCheckToman, currency, lang)} می‌باشد.`
-        : lang === 'AR'
-          ? `ملخص فاتورة الحفل الرسمي في إيفنت ميت لعدد ${guestCount} ضيف. تكلفة الفرد ${formatMoney(calculation.finalPerGuestToman, currency, lang)}. إجمالي العقد ${formatMoney(calculation.finalTotalToman, currency, lang)}. الدفعة الأولى ${formatMoney(calculation.downPaymentToman, currency, lang)}، وعدد ${installmentMonths} شيكات بقيمة ${formatMoney(calculation.eachCheckToman, currency, lang)} لكل شيك.`
-          : `EventMate VIP Official Wedding Proforma Invoice for ${guestCount} guests with ${servingStyle.title.EN}. Final cost per guest is ${formatMoney(calculation.finalPerGuestToman, currency, lang)}. Total contract is ${formatMoney(calculation.finalTotalToman, currency, lang)}. Cash down payment is ${formatMoney(calculation.downPaymentToman, currency, lang)}, with ${installmentMonths} Sayyadi check installments of ${formatMoney(calculation.eachCheckToman, currency, lang)} each.`;
+        : lang === 'KU'
+          ? `بەخێربێن بۆ سیستەمی ئیڤێنت مەیت. کورتەی پێش‌فاکتۆری ئاهەنگی زەماوەند بۆ ${guestCount} میوان. تێچووی هەر کەسێک ${formatMoney(calculation.finalPerGuestToman, currency, lang)}. کۆی گشتی گرێبەست ${formatMoney(calculation.finalTotalToman, currency, lang)}. پێشەکی کاش ${formatMoney(calculation.downPaymentToman, currency, lang)} و ${installmentMonths} چەکی سەیادی هەر یەک بە بڕی ${formatMoney(calculation.eachCheckToman, currency, lang)}.`
+          : lang === 'HY'
+            ? `Բարի գալուստ EventMate VIP: Հարսանեկան նախահաշիվ ${guestCount} հյուրի համար: Մեկ անձի արժեքը՝ ${formatMoney(calculation.finalPerGuestToman, currency, lang)}: Պայմանագրի ընդհանուր գումարը՝ ${formatMoney(calculation.finalTotalToman, currency, lang)}, կանխավճարը՝ ${formatMoney(calculation.downPaymentToman, currency, lang)}, և ${installmentMonths} Սայադի չեկ՝ յուրաքանչյուրը ${formatMoney(calculation.eachCheckToman, currency, lang)}:`
+            : lang === 'AR'
+              ? `ملخص فاتورة الحفل الرسمي في إيفنت ميت لعدد ${guestCount} ضيف. تكلفة الفرد ${formatMoney(calculation.finalPerGuestToman, currency, lang)}. إجمالي العقد ${formatMoney(calculation.finalTotalToman, currency, lang)}. الدفعة الأولى ${formatMoney(calculation.downPaymentToman, currency, lang)}، وعدد ${installmentMonths} شيكات بقيمة ${formatMoney(calculation.eachCheckToman, currency, lang)} لكل شيك.`
+              : `EventMate VIP Official Wedding Proforma Invoice for ${guestCount} guests with ${servingStyle.title.EN}. Final cost per guest is ${formatMoney(calculation.finalPerGuestToman, currency, lang)}. Total contract is ${formatMoney(calculation.finalTotalToman, currency, lang)}. Cash down payment is ${formatMoney(calculation.downPaymentToman, currency, lang)}, with ${installmentMonths} Sayyadi check installments of ${formatMoney(calculation.eachCheckToman, currency, lang)} each.`;
 
     const utterance = new SpeechSynthesisUtterance(speechText);
     utterance.lang = currentLangMeta.voiceLang;
@@ -316,7 +406,19 @@ export default function App() {
       )
       .join('\n');
 
+    const coupleCheckShareToman = Math.round(
+      (calculation.eachCheckToman * familySplit.couplePercent) / 100,
+    );
+    const groomFamCheckShareToman = Math.round(
+      (calculation.eachCheckToman * familySplit.groomFamilyPercent) / 100,
+    );
+    const brideFamCheckShareToman = Math.max(
+      0,
+      calculation.eachCheckToman - coupleCheckShareToman - groomFamCheckShareToman,
+    );
+
     const message = `👑 *پیش‌فاکتور رسمی جشن عروسی و تشریفات — ${customBrand.hallName}*
+🔒 *شناسه ایزوله تالار:* ?hall=${customBrand.tenantSlug || 'royal-palace'}
 🌸 *مدیریت محترم: ${customBrand.managerName} (${customBrand.city})*
 🏛️ *${customBrand.slogan}*
 ────────────────────
@@ -324,12 +426,19 @@ export default function App() {
 📞 *تلفن تماس:* ${customerPhone}
 📅 *تاریخ انتخابی:* ${selectedFlashDate ? `${selectedFlashDate.persianDate} (${selectedFlashDate.discountPercent}% تخفیف)` : 'پاییز ۱۴۰۵'}
 👥 *تعداد مهمانان:* ${formatNumberLocale(guestCount, lang)} نفر
-🍽️ *سبک پذیرایی:* ${servingStyle.title[lang]}
+🍽️ *سبک پذیرایی:* ${servingStyle.title[lang] || servingStyle.title.FA}
 ────────────────────
 💎 *هزینه هر نفر:* ${formatMoney(calculation.finalPerGuestToman, currency, lang)}
 💰 *جمع کل قرارداد:* *${formatMoney(calculation.finalTotalToman, currency, lang)}*
 💵 *پیش‌پرداخت نقدی (${downPaymentPercent}%):* ${formatMoney(calculation.downPaymentToman, currency, lang)}
 📝 *اقساط چک صیادی (${installmentMonths} ماهه):* هر چک *${formatMoney(calculation.eachCheckToman, currency, lang)}*
+────────────────────
+🛡️ *استعلام اعتبار چک صیادی:* ${sayyadiInquiry.statusLabel} (امتیاز ${sayyadiInquiry.creditScore}/1000)
+🔒 *ضمانت قیمت ضدتورم منو:* ${inflationShieldEnabled ? 'فعال (تضمین ۱۰۰٪ ثبات قیمت مواد اولیه تا شب مراسم)' : 'غیرفعال'}
+👨‍👩‍👧‍👦 *تسهیم هزینه بین خانواده‌ها:*
+• سهم عروس و داماد (${familySplit.couplePercent}%): هر چک ${formatMoney(coupleCheckShareToman, currency, lang)}
+• سهم خانواده داماد (${familySplit.groomFamilyPercent}%): هر چک ${formatMoney(groomFamCheckShareToman, currency, lang)}
+• سهم خانواده عروس (${familySplit.brideFamilyPercent}%): هر چک ${formatMoney(brideFamCheckShareToman, currency, lang)}
 ────────────────────
 ✨ *منوی انتخابی مجلس:*
 ${itemLines}
@@ -350,16 +459,19 @@ ${checkLines}`;
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
+          tenantId: customBrand.tenantSlug || 'royal-palace',
           customerName,
           customerPhone,
           eventDate: selectedFlashDate ? selectedFlashDate.persianDate : '1405/08/15',
           guestCount,
-          servingStyle: servingStyle.title[lang],
+          servingStyle: servingStyle.title[lang] || servingStyle.title.FA,
           totalToman: calculation.finalTotalToman,
           downPaymentToman: calculation.downPaymentToman,
           installmentMonths,
           eachCheckToman: calculation.eachCheckToman,
-          selectedItems: selectedItems.map((i) => i.name[lang]),
+          selectedItems: selectedItems.map((i) => i.name[lang] || i.name.FA),
+          inflationShieldEnabled,
+          sayyadiStatusColor: sayyadiInquiry.statusColor,
         }),
       });
       const data = (await res.json()) as {
@@ -519,6 +631,12 @@ ${checkLines}`;
               🎂 {t.navBuilder}
             </a>
             <a
+              href="#value-drivers"
+              className="px-3 py-2 rounded-xl bg-emerald-50 text-emerald-900 border border-emerald-200 hover:bg-emerald-100 transition"
+            >
+              🛡️ استعلام چک + تقسیم هزینه + یادگاری خلاقانه
+            </a>
+            <a
               href="#flash-dates"
               className="px-3 py-2 rounded-xl hover:bg-[#FFF0F3] hover:text-[#E11D48] transition"
             >
@@ -537,16 +655,28 @@ ${checkLines}`;
               📸 {t.navAnalytics}
             </a>
             <a
-              href="#why-buy"
-              className="px-3 py-2 rounded-xl bg-amber-50 text-[#9A7411] border border-amber-200 hover:bg-amber-100 transition"
+              href="#hall-deliverables"
+              className="px-3 py-2 rounded-xl bg-amber-50 text-[#9A7411] border border-amber-300 hover:bg-amber-100 transition"
             >
-              🏛️ چرا تالاردار بخرد؟
+              🎁 تالاردار چه به دست می‌آورد؟
+            </a>
+            <a
+              href="#visitor-playbook"
+              className="px-3 py-2 rounded-xl bg-gradient-to-r from-[#2C1E16] to-[#4A1525] text-[#E6C258] border border-[#D4AF37] hover:brightness-110 transition"
+            >
+              🧭 راهکار ویزیتورها + فرمول طلایی
             </a>
             <a
               href="#invitation-letter"
               className="px-3 py-2 rounded-xl bg-rose-50 text-[#E11D48] border border-rose-200 hover:bg-rose-100 transition"
             >
               💌 دعوت‌نامه + ۲۵٪ سود ویزیتور
+            </a>
+            <a
+              href="#hall-ads"
+              className="px-3 py-2 rounded-xl bg-amber-100 text-[#2C1E16] border border-[#D4AF37] hover:bg-amber-200 transition"
+            >
+              📢 تبلیغات تالارها
             </a>
             <a
               href="#android-ci"
@@ -576,6 +706,38 @@ ${checkLines}`;
             </button>
           </div>
         </div>
+
+        {/* Dedicated Quick-Access Sub-Menu Bar for Hall Deliverables & Visitor Playbook (All Screens) */}
+        <div className="bg-[#FAF7F2] border-t border-[#E6DFD3] px-4 py-2">
+          <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2 text-xs">
+            <div className="flex flex-wrap items-center gap-2">
+              <a
+                href="#hall-deliverables"
+                className="px-3 py-1.5 rounded-xl bg-[#2C1E16] text-[#E6C258] font-extrabold hover:bg-[#3E2723] transition flex items-center gap-1.5 shadow-sm"
+              >
+                <span>🎁 تالاردارها در صورت خرید این برنامه چه چیزی به دست می‌آورند؟ (۸ دستاورد + سود یک‌شبه)</span>
+              </a>
+              <a
+                href="#visitor-playbook"
+                className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#E11D48] to-[#BE123C] text-white font-extrabold hover:brightness-105 transition flex items-center gap-1.5 shadow-sm"
+              >
+                <span>🧭 راهکار و راهنمای ویزیتورها: ابتدا کدام قابلیت‌ها را معرفی نمایند؟</span>
+              </a>
+              <a
+                href="#golden-formula"
+                className="px-3 py-1.5 rounded-xl bg-emerald-100 text-emerald-950 border border-emerald-300 font-extrabold hover:bg-emerald-200 transition flex items-center gap-1"
+              >
+                <span>🔑 آموزش فرمول طلایی فروش (۱۲ میلیون نقد + ۲ چک)</span>
+              </a>
+            </div>
+            <a
+              href="#invitation-letter"
+              className="text-[11px] font-extrabold text-[#9A7411] hover:text-[#E11D48] transition"
+            >
+              ثبت فروش لایسنس و دریافت ۲۵٪ شبا ←
+            </a>
+          </div>
+        </div>
       </header>
 
       {/* Celebration Toast Banner */}
@@ -592,8 +754,113 @@ ${checkLines}`;
         </div>
       )}
 
+      {/* ADHD Visual Reading Focus Ruler (خط‌کش نوری تمرکز مطالعه ویژه ADHD) */}
+      {a11y.adhdReadingGuide && (
+        <div
+          style={{top: `${Math.max(40, readingGuideY - 22)}px`}}
+          className="fixed inset-x-0 h-12 pointer-events-none z-50 bg-amber-300/25 border-y-2 border-[#E11D48] shadow-lg transition-all duration-75"
+          aria-hidden="true"
+        />
+      )}
+
       {/* MAIN CONTENT CONTAINER */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6">
+        {/* 2.2. ALWAYS-VISIBLE 1-CLICK ACCESSIBILITY (معلولان) & ADHD FOCUS BAR */}
+        <div className="mt-4 p-3 sm:px-5 rounded-2xl bg-[#2C1E16] text-[#FAF7F2] border-2 border-[#C59B27] shadow-md flex flex-wrap items-center justify-between gap-2.5">
+          <div className="flex items-center gap-2 text-xs font-extrabold text-[#E6C258]">
+            <Accessibility className="w-4 h-4 text-[#E11D48] shrink-0" />
+            <span>نوار سریع دسترس‌پذیری معلولان و تمرکز ADHD (فعالسازی ۱-کلیکی):</span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setA11y((prev) => ({...prev, adhdFocusMode: !prev.adhdFocusMode}))}
+              className={`px-3 py-1.5 rounded-xl text-xs font-extrabold border transition cursor-pointer ${
+                a11y.adhdFocusMode
+                  ? 'bg-[#E11D48] text-white border-white shadow'
+                  : 'bg-[#3E2723] text-[#FAF7F2] border-[#C59B27]/50 hover:border-[#E6C258]'
+              }`}
+            >
+              🧠 {a11y.adhdFocusMode ? 'حالت تمرکز ADHD: فعال ✓' : 'حالت تمرکز ADHD (ضد شلوغی)'}
+            </button>
+
+            <button
+              type="button"
+              onClick={() =>
+                setA11y((prev) => ({...prev, adhdReadingGuide: !prev.adhdReadingGuide}))
+              }
+              className={`px-3 py-1.5 rounded-xl text-xs font-extrabold border transition cursor-pointer ${
+                a11y.adhdReadingGuide
+                  ? 'bg-[#E6C258] text-[#1E130D] border-white shadow'
+                  : 'bg-[#3E2723] text-[#FAF7F2] border-[#C59B27]/50 hover:border-[#E6C258]'
+              }`}
+            >
+              📏 {a11y.adhdReadingGuide ? 'خط‌کش تمرکز ADHD: فعال ✓' : 'خط‌کش نوری مطالعه (ADHD)'}
+            </button>
+
+            <button
+              type="button"
+              onClick={() =>
+                setA11y((prev) => ({...prev, motorLargeTargets: !prev.motorLargeTargets}))
+              }
+              className={`px-3 py-1.5 rounded-xl text-xs font-extrabold border transition cursor-pointer ${
+                a11y.motorLargeTargets
+                  ? 'bg-emerald-600 text-white border-white shadow'
+                  : 'bg-[#3E2723] text-[#FAF7F2] border-[#C59B27]/50 hover:border-[#E6C258]'
+              }`}
+            >
+              🖐️ {a11y.motorLargeTargets ? 'دکمه‌های بزرگ حرکتی: فعال ✓' : 'معلولیت حرکتی (دکمه‌های بزرگ)'}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setA11y((prev) => ({...prev, highContrast: !prev.highContrast}))}
+              className={`px-3 py-1.5 rounded-xl text-xs font-extrabold border transition cursor-pointer ${
+                a11y.highContrast
+                  ? 'bg-white text-black border-black shadow'
+                  : 'bg-[#3E2723] text-[#FAF7F2] border-[#C59B27]/50 hover:border-[#E6C258]'
+              }`}
+            >
+              👁️ {a11y.highContrast ? 'کنتراست کم‌بینایان: فعال ✓' : 'کم‌بینایان (کنتراست بالا)'}
+            </button>
+
+            <button
+              type="button"
+              onClick={isSpeaking ? handleStopSpeaking : handleSpeakInvoice}
+              className="px-3 py-1.5 rounded-xl text-xs font-extrabold bg-gradient-to-r from-[#D4AF37] to-[#AA8215] text-[#1E130D] shadow hover:brightness-105 transition cursor-pointer"
+            >
+              🔊 {isSpeaking ? 'توقف خوانش صوتی' : 'خوانش صوتی نابینایان'}
+            </button>
+          </div>
+        </div>
+
+        {/* ADHD 3-STEP CALM SUMMARY BAR (Shown when ADHD Focus Mode is active) */}
+        {a11y.adhdFocusMode && (
+          <div className="my-3 p-4 rounded-2xl bg-amber-50 border-2 border-[#2C1E16] text-[#2C1E16] grid grid-cols-1 md:grid-cols-3 gap-3 adhd-spotlight">
+            <div className="p-3 rounded-xl bg-white border border-[#C59B27]">
+              <div className="text-xs font-bold text-[#E11D48]">گام ۱ (تعداد مهمان و سبک):</div>
+              <div className="font-extrabold text-sm mt-0.5">
+                {formatNumberLocale(guestCount, lang)} نفر • {servingStyle.title[lang]}
+              </div>
+            </div>
+            <div className="p-3 rounded-xl bg-white border border-[#C59B27]">
+              <div className="text-xs font-bold text-[#9A7411]">گام ۲ (جمع کل و هزینه هر نفر):</div>
+              <div className="font-mono-num font-extrabold text-sm mt-0.5">
+                کل: {formatMoney(calculation.finalTotalToman, currency, lang)} (هر نفر:{' '}
+                {formatMoney(calculation.finalPerGuestToman, currency, lang)})
+              </div>
+            </div>
+            <div className="p-3 rounded-xl bg-white border border-[#C59B27]">
+              <div className="text-xs font-bold text-emerald-700">گام ۳ (اقساط چک صیادی):</div>
+              <div className="font-mono-num font-extrabold text-sm mt-0.5">
+                {formatNumberLocale(installmentMonths, lang)} برگ چک ×{' '}
+                {formatMoney(calculation.eachCheckToman, currency, lang)}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* 2.5. INSTANT WHITE-LABEL CUSTOMIZATION BAR FOR HALLS & WEDDING AGENCIES */}
         <WhiteLabelAndVisitorSuite
           lang={lang}
@@ -1118,6 +1385,48 @@ ${checkLines}`;
                         {formatMoney(calculation.eachCheckToman, currency, lang, liveRates)}
                       </span>
                     </div>
+
+                    {/* Active Value Drivers Summary inside Sticky Invoice */}
+                    <div className="pt-2 border-t border-[#E6DFD3] space-y-1.5 text-[11px]">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[#6E5A4F] font-bold">استعلام رنگ چک صیادی:</span>
+                        <span
+                          className={`px-2 py-0.5 rounded-full font-extrabold ${
+                            sayyadiInquiry.statusColor === 'WHITE'
+                              ? 'bg-emerald-100 text-emerald-900'
+                              : sayyadiInquiry.statusColor === 'YELLOW'
+                                ? 'bg-amber-100 text-amber-900'
+                                : 'bg-rose-100 text-rose-900'
+                          }`}
+                        >
+                          {sayyadiInquiry.statusColor === 'WHITE'
+                            ? '⚪ وضعیت سفید (تایید تالار)'
+                            : sayyadiInquiry.statusColor === 'YELLOW'
+                              ? '🟡 وضعیت زرد (نیاز به ضامن)'
+                              : '🔴 وضعیت قرمز'}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-[#6E5A4F] font-bold">تسهیم هزینه خانواده‌ها:</span>
+                        <span className="font-mono-num font-bold text-[#2C1E16]">
+                          زوج {familySplit.couplePercent}% | داماد {familySplit.groomFamilyPercent}% | عروس {familySplit.brideFamilyPercent}%
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-[#6E5A4F] font-bold">ضمانت قیمت ضدتورم منو:</span>
+                        <button
+                          type="button"
+                          onClick={() => setInflationShieldEnabled(!inflationShieldEnabled)}
+                          className={`px-2 py-0.5 rounded-full font-extrabold cursor-pointer ${
+                            inflationShieldEnabled
+                              ? 'bg-[#2C1E16] text-[#E6C258]'
+                              : 'bg-gray-200 text-gray-700'
+                          }`}
+                        >
+                          {inflationShieldEnabled ? '🔒 قفل قیمت فعال ✓' : 'غیرفعال (کلیک برای قفل)'}
+                        </button>
+                      </div>
+                    </div>
                   </div>
 
                   {/* Generated Purple Sayyadi Checks Schedule Preview */}
@@ -1198,6 +1507,29 @@ ${checkLines}`;
             </div>
           </div>
         </section>
+
+        {/* 5.5. NEW VALUE DRIVERS FOR HALL OWNERS + 6 CREATIVE MEMORIAL MODULES */}
+        <HallValueAndCreativeSuite
+          lang={lang}
+          currency={currency}
+          hallName={customBrand.hallName}
+          guestCount={guestCount}
+          finalTotalToman={calculation.finalTotalToman}
+          downPaymentToman={calculation.downPaymentToman}
+          remainingForChecksToman={calculation.remainingForChecksToman}
+          installmentMonths={installmentMonths}
+          eachCheckToman={calculation.eachCheckToman}
+          inflationShieldEnabled={inflationShieldEnabled}
+          onToggleInflationShield={setInflationShieldEnabled}
+          sayyadiInquiry={sayyadiInquiry}
+          onUpdateSayyadiInquiry={setSayyadiInquiry}
+          familySplit={familySplit}
+          onUpdateFamilySplit={setFamilySplit}
+          weatherInsuranceEnabled={weatherInsuranceEnabled}
+          onToggleWeatherInsurance={setWeatherInsuranceEnabled}
+          barakatCharityEnabled={barakatCharityEnabled}
+          onToggleBarakatCharity={setBarakatCharityEnabled}
+        />
 
         {/* 6. SHOWCASE OF 10 AUTHENTIC VENUE & CATERING PACKAGES (UNSPLASH VERIFIED) */}
         <section id="packages" className="py-10 adhd-dimmable">
@@ -1324,7 +1656,23 @@ ${checkLines}`;
           downPaymentToman={calculation.downPaymentToman}
           installmentMonths={installmentMonths}
           eachCheckToman={calculation.eachCheckToman}
-          selectedNames={selectedItems.map((i) => i.name[lang])}
+          selectedNames={selectedItems.map((i) => i.name[lang] || i.name.FA)}
+        />
+
+        {/* 8.2. WHAT HALL OWNERS GET UPON PURCHASING + VISITOR STEP-BY-STEP PLAYBOOK & GOLDEN FORMULA */}
+        <HallBenefitsAndVisitorPlaybook
+          lang={lang}
+          currency={currency}
+          hallName={customBrand.hallName}
+          onQuickApplyDemoHall={(nextHall, nextManager, nextCity, nextPhone) => {
+            handleUpdateBrand({
+              ...customBrand,
+              hallName: nextHall,
+              managerName: nextManager,
+              city: nextCity,
+              whatsapp: nextPhone,
+            });
+          }}
         />
 
         {/* 8.5. WHY HALL OWNERS MUST BUY + 25% VISITOR PROFIT MECHANISM & INVITATION LETTER */}
@@ -1352,7 +1700,7 @@ ${checkLines}`;
               اکوسیستم آفرینش | شهر جدید نیومتاورسیتی جهان | توان استیج FBNM
             </p>
             <p className="text-[11px] text-[#B09B8E]">
-              پکیج رسمی اندروید: com.eventmate.vip • پشتیبانی از ۵ زبان و ۵ ارز زنده • استاندارد دسترسی‌پذیری کم‌بینایان و ADHD
+              پکیج رسمی اندروید: com.eventmate.vip • پشتیبانی از ۷ زبان زنده (فارسی، انگلیسی، عربی، ترکی، کُردی، ارمنی و روسی) • دسترس‌پذیری معلولان و ADHD
             </p>
           </div>
 
@@ -1393,7 +1741,7 @@ ${checkLines}`;
         downPaymentToman={calculation.downPaymentToman}
         installmentMonths={installmentMonths}
         eachCheckToman={calculation.eachCheckToman}
-        selectedNames={selectedItems.map((i) => i.name[lang])}
+        selectedNames={selectedItems.map((i) => i.name[lang] || i.name.FA)}
         isSpeaking={isSpeaking}
         onSpeakInvoice={handleSpeakInvoice}
         onStopSpeaking={handleStopSpeaking}
@@ -1407,13 +1755,13 @@ ${checkLines}`;
         customerName={customerName}
         eventDate={selectedFlashDate ? selectedFlashDate.persianDate : 'پاییز ۱۴۰۵'}
         guestCount={guestCount}
-        servingStyleTitle={servingStyle.title[lang]}
+        servingStyleTitle={servingStyle.title[lang] || servingStyle.title.FA}
         perGuestToman={calculation.finalPerGuestToman}
         totalToman={calculation.finalTotalToman}
         downPaymentToman={calculation.downPaymentToman}
         installmentMonths={installmentMonths}
         eachCheckToman={calculation.eachCheckToman}
-        selectedItemNames={selectedItems.map((i) => i.name[lang])}
+        selectedItemNames={selectedItems.map((i) => i.name[lang] || i.name.FA)}
         checks={calculation.checks}
       />
 

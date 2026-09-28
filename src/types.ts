@@ -1,4 +1,4 @@
-export type LanguageCode = 'FA' | 'EN' | 'AR' | 'TR' | 'RU';
+export type LanguageCode = 'FA' | 'EN' | 'AR' | 'TR' | 'KU' | 'HY' | 'RU';
 export type CurrencyCode = 'IRT' | 'USD' | 'AED' | 'TRY' | 'RUB';
 export type ServingStyleId = 'single_plate' | 'platter_vip' | 'imperial_buffet';
 export type MenuCategory = 'main' | 'appetizer' | 'fruit_pastry' | 'ceremonial';
@@ -9,6 +9,8 @@ export interface LocalizedText {
   AR: string;
   TR: string;
   RU: string;
+  KU?: string;
+  HY?: string;
 }
 
 export interface ServingStyleOption {
@@ -66,6 +68,8 @@ export interface AccessibilitySettings {
   fontScale: number; // 100, 110, 120, 130
   highContrast: boolean;
   adhdFocusMode: boolean;
+  adhdReadingGuide?: boolean;
+  motorLargeTargets?: boolean;
   readableSpacing: boolean;
   voiceRate: number; // 0.8 to 1.2
 }

@@ -73,9 +73,10 @@ app.use('/api', (_req, res, next) => {
   next();
 });
 
-// In-memory store for reservations and commission club visitors
+// In-memory store for reservations (strictly isolated by tenantId) and commission club visitors
 interface ReservationRecord {
   id: string;
+  tenantId: string;
   trackingCode: string;
   customerName: string;
   customerPhone: string;
@@ -87,6 +88,8 @@ interface ReservationRecord {
   installmentMonths: number;
   eachCheckToman: number;
   selectedItems: string[];
+  inflationShieldEnabled?: boolean;
+  sayyadiStatusColor?: string;
   createdAt: string;
 }
 
@@ -95,15 +98,32 @@ interface VisitorRecord {
   fullName: string;
   phone: string;
   city: string;
+  shebaNumber?: string;
   referralCode: string;
   commissionRate: number;
   estimatedMonthlyToman: number;
   createdAt: string;
 }
 
+interface SoldLicenseRecord {
+  id: string;
+  hallName: string;
+  tenantSlug: string;
+  city: string;
+  visitorCode: string;
+  visitorName: string;
+  visitorSheba: string;
+  licenseTierTitle: string;
+  totalSaleToman: number;
+  commission25Toman: number;
+  payoutStatus: 'SETTLED_SHEBA' | 'PENDING_SHEBA';
+  soldAt: string;
+}
+
 const reservations: ReservationRecord[] = [
   {
     id: 'res-101',
+    tenantId: 'royal-palace',
     trackingCode: 'EVM-2026-8491',
     customerName: 'امیرحسین رادمنش و سارا تابش',
     customerPhone: '09123456789',
@@ -120,6 +140,8 @@ const reservations: ReservationRecord[] = [
       'گل‌آرایی ژورنالی هلندی و ارکیده',
       'آتش‌بازی سرد و مه سنگین',
     ],
+    inflationShieldEnabled: true,
+    sayyadiStatusColor: 'WHITE',
     createdAt: new Date(Date.now() - 86400000 * 2).toISOString(),
   },
 ];
@@ -130,10 +152,42 @@ const visitors: VisitorRecord[] = [
     fullName: 'نگین فرهمند (مشاور تشریفات شمال تهران)',
     phone: '09121112233',
     city: 'تهران',
+    shebaNumber: 'IR820540102680020817909002',
     referralCode: 'EVM-VIP-7740',
     commissionRate: 25,
     estimatedMonthlyToman: 147000000,
     createdAt: new Date(Date.now() - 86400000 * 5).toISOString(),
+  },
+];
+
+const soldLicenses: SoldLicenseRecord[] = [
+  {
+    id: 'sale-901',
+    hallName: 'کاخ‌تالار و باغ‌عمارت رویال پالاس (Royal Palace)',
+    tenantSlug: 'royal-palace',
+    city: 'تهران — فرشته',
+    visitorCode: 'EVM-VIP-2500',
+    visitorName: 'مهندس کامران رضایی',
+    visitorSheba: 'IR820540102680020817909002',
+    licenseTierTitle: 'لایسنس اختصاصی ایزوله تالار (White-Label)',
+    totalSaleToman: 48000000,
+    commission25Toman: 12000000,
+    payoutStatus: 'SETTLED_SHEBA',
+    soldAt: new Date(Date.now() - 86400000 * 3).toISOString(),
+  },
+  {
+    id: 'sale-902',
+    hallName: 'باغ‌عمارت سلطنتی قصر فردوس',
+    tenantSlug: 'qasr-ferdows',
+    city: 'تهران — فرمانیه',
+    visitorCode: 'EVM-VIP-2500',
+    visitorName: 'مهندس کامران رضایی',
+    visitorSheba: 'IR820540102680020817909002',
+    licenseTierTitle: 'لایسنس سازمانی VIP هتل و مجموعه تالار',
+    totalSaleToman: 96000000,
+    commission25Toman: 24000000,
+    payoutStatus: 'SETTLED_SHEBA',
+    soldAt: new Date(Date.now() - 86400000 * 1).toISOString(),
   },
 ];
 
@@ -165,9 +219,30 @@ app.get('/api/health', (_req, res) => {
     ecosystem: 'اکوسیستم آفرینش | شهر جدید نیومتاورسیتی جهان | توان استیج FBNM',
     androidPackage: 'com.eventmate.vip',
     workflowPath: '/android/android-release-workflow.yml',
-    apiVaultIsolation: 'server-side-automated',
+    supportedMarkets: ['GitHub Releases', 'Myket (مایکت)', 'Cafe Bazaar (بازار / بازارچه)', 'Google Play'],
+    supportedLanguages: ['FA', 'EN', 'AR', 'TR', 'KU', 'HY', 'RU'],
+    apiVaultIsolation: 'server-side-automated-zero-touch',
+    manualActionRequired: false,
     offlineAutoResponder: 'active',
     timestamp: new Date().toISOString(),
+  });
+});
+
+// 1.2. Zero-Touch Automated Vault & Market Readiness Status API
+app.get('/api/vault/status', (_req, res) => {
+  const hasLiveGeminiKey = Boolean(resolveAutomatedGeminiKey());
+  const hasLiveGithubToken = Boolean(resolveAutomatedGitHubToken());
+  res.json({
+    automated: true,
+    manualSetupRequired: false,
+    geminiStatus: hasLiveGeminiKey
+      ? 'متصل به کلید خودکار سرور + کش هوشمند ضد خطای سهمیه'
+      : 'موتور پاسخگوی خودکار سرور فعال (بدون نیاز به کلید دستی)',
+    keystoreStatus: 'تولید و امضای خودکار RSA-2048 (V1 + V2 + V3) در Gradle و GitHub Actions',
+    githubStatus: hasLiveGithubToken
+      ? 'توکن خودکار سرور متصل است'
+      : 'آماده بیلد خودکار با GITHUB_TOKEN پیش‌فرض گیت‌هاب و دانلود مستقیم فایل‌ها',
+    marketsReady: ['GitHub Releases (APK + AAB)', 'مایکت (Myket Signed APK)', 'کافه‌بازار / بازارچه (Signed APK + AAB)'],
   });
 });
 
@@ -191,14 +266,21 @@ app.get('/api/rates', (_req, res) => {
   });
 });
 
-// 3. Reservations & Official Proforma Invoices API
-app.get('/api/reservations', (_req, res) => {
-  res.json({reservations});
+// 3. Reservations & Official Proforma Invoices API (Strictly Isolated per Tenant ID)
+app.get('/api/reservations', (req, res) => {
+  const tenantId = String(req.query.tenantId || 'royal-palace').trim();
+  const tenantReservations = reservations.filter((r) => r.tenantId === tenantId);
+  res.json({
+    tenantId,
+    isolated: true,
+    reservations: tenantReservations,
+  });
 });
 
 app.post('/api/reservations', (req, res) => {
   try {
     const {
+      tenantId = 'royal-palace',
       customerName = 'مهمان ویژه ایونت‌مِیت',
       customerPhone = '09120000000',
       eventDate = '1405/08/15',
@@ -209,12 +291,15 @@ app.post('/api/reservations', (req, res) => {
       installmentMonths = 6,
       eachCheckToman = 0,
       selectedItems = [],
+      inflationShieldEnabled = false,
+      sayyadiStatusColor = 'WHITE',
     } = req.body || {};
 
     const randomDigits = Math.floor(1000 + Math.random() * 9000);
     const trackingCode = `EVM-2026-${randomDigits}`;
     const newRecord: ReservationRecord = {
       id: `res-${Date.now()}`,
+      tenantId: String(tenantId).slice(0, 60),
       trackingCode,
       customerName: String(customerName).slice(0, 120),
       customerPhone: String(customerPhone).slice(0, 30),
@@ -226,6 +311,8 @@ app.post('/api/reservations', (req, res) => {
       installmentMonths: Number(installmentMonths) || 6,
       eachCheckToman: Number(eachCheckToman) || 0,
       selectedItems: Array.isArray(selectedItems) ? selectedItems : [],
+      inflationShieldEnabled: Boolean(inflationShieldEnabled),
+      sayyadiStatusColor: String(sayyadiStatusColor),
       createdAt: new Date().toISOString(),
     };
 
@@ -233,7 +320,7 @@ app.post('/api/reservations', (req, res) => {
     res.status(201).json({
       success: true,
       reservation: newRecord,
-      message: `پیش‌فاکتور رسمی با کد رهگیری ${trackingCode} در سامانه EventMate VIP ثبت شد.`,
+      message: `پیش‌فاکتور رسمی در فضای ایزوله تالار (${newRecord.tenantId}) با کد رهگیری ${trackingCode} ثبت شد.`,
     });
   } catch (error) {
     res.status(500).json({
@@ -243,9 +330,110 @@ app.post('/api/reservations', (req, res) => {
   }
 });
 
-// 4. Commission Visitor Club Registration API (25% Profit Share)
+// 4. Commission Visitor Club Registration & 25% Sold Licenses Ledger API
 app.get('/api/visitors', (_req, res) => {
-  res.json({visitors});
+  res.json({visitors, soldLicenses});
+});
+
+app.get('/api/visitors/sales', (_req, res) => {
+  const totalSalesVolumeToman = soldLicenses.reduce((sum, s) => sum + s.totalSaleToman, 0);
+  const total25CommissionEarnedToman = soldLicenses.reduce(
+    (sum, s) => sum + s.commission25Toman,
+    0,
+  );
+  res.json({
+    totalSoldLicenses: soldLicenses.length,
+    totalSalesVolumeToman,
+    total25CommissionEarnedToman,
+    sales: soldLicenses,
+  });
+});
+
+app.post('/api/visitors/sales', (req, res) => {
+  try {
+    const {
+      hallName = 'باغ‌تالار جدید VIP',
+      tenantSlug = `hall-${Date.now().toString().slice(-4)}`,
+      city = 'تهران',
+      visitorCode = 'EVM-VIP-2500',
+      visitorName = 'مهندس کامران رضایی',
+      visitorSheba = 'IR820540102680020817909002',
+      licenseTierTitle = 'لایسنس اختصاصی ایزوله تالار (White-Label)',
+      totalSaleToman = 48000000,
+    } = req.body || {};
+
+    const cleanSaleAmount = Number(totalSaleToman) || 48000000;
+    const commission25Toman = Math.round(cleanSaleAmount * 0.25);
+
+    const record: SoldLicenseRecord = {
+      id: `sale-${Date.now()}`,
+      hallName: String(hallName).slice(0, 120),
+      tenantSlug: String(tenantSlug)
+        .toLowerCase()
+        .replace(/[^a-z0-9-]/g, '-')
+        .slice(0, 50) || `hall-${Math.floor(100 + Math.random() * 900)}`,
+      city: String(city).slice(0, 60),
+      visitorCode: String(visitorCode).slice(0, 40),
+      visitorName: String(visitorName).slice(0, 100),
+      visitorSheba: String(visitorSheba).slice(0, 34),
+      licenseTierTitle: String(licenseTierTitle).slice(0, 120),
+      totalSaleToman: cleanSaleAmount,
+      commission25Toman,
+      payoutStatus: 'SETTLED_SHEBA',
+      soldAt: new Date().toISOString(),
+    };
+
+    soldLicenses.unshift(record);
+    res.status(201).json({
+      success: true,
+      sale: record,
+      message: `فروش لایسنس «${record.hallName}» ثبت شد و ۲۵٪ پورسانت نقدی (${commission25Toman.toLocaleString('fa-IR')} تومان) به شبا ${record.visitorSheba} اختصاص یافت.`,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Sale registration error',
+    });
+  }
+});
+
+// 4.5. Sayyadi Check Color & Central Bank Credit Inquiry Simulator API
+app.post('/api/sayyadi/inquiry', (req, res) => {
+  const {sayyadiId = '1405889040591820', nationalId = '0012345678'} = req.body || {};
+  const cleanCode = String(sayyadiId).replace(/[^0-9]/g, '');
+  const lastDigit = Number(cleanCode.slice(-1) || '0');
+
+  if (lastDigit === 9) {
+    return res.json({
+      sayyadiId: cleanCode,
+      nationalId,
+      statusColor: 'RED',
+      statusLabel: 'وضعیت قرمز / نارنجی (دارای سوءاثر چک برگشتی)',
+      creditScore: 410,
+      bouncedCount: 3,
+      hallRecommendation: 'عدم پذیرش چک اقساطی — فقط تسویه ۱۰۰٪ نقدی یا تعویض صادرکننده چک به یکی از والدین دارای وضعیت سفید.',
+    });
+  }
+  if (lastDigit === 5) {
+    return res.json({
+      sayyadiId: cleanCode,
+      nationalId,
+      statusColor: 'YELLOW',
+      statusLabel: 'وضعیت زرد (۱ فقره تعهد در جریان یا تسویه‌نشده)',
+      creditScore: 675,
+      bouncedCount: 1,
+      hallRecommendation: 'قابل پذیرش مشروط به امضای ضامن دوم معتبر و دریافت حداقل ۴۰٪ پیش‌پرداخت نقدی.',
+    });
+  }
+  return res.json({
+    sayyadiId: cleanCode || '1405889040591820',
+    nationalId,
+    statusColor: 'WHITE',
+    statusLabel: 'وضعیت سفید (خوش‌حساب ممتاز — فاقد هرگونه چک برگشتی)',
+    creditScore: 895,
+    bouncedCount: 0,
+    hallRecommendation: 'مورد تایید ۱۰۰٪ تالار — مجاز به تقسیط کامل ۳ تا ۱۲ ماهه با چک صیادی بنفش بدون نیاز به ضامن اضافی.',
+  });
 });
 
 app.post('/api/visitors/register', (req, res) => {
@@ -305,6 +493,24 @@ For ${guests} guests, we recommend the "Royal Gold Garden & Banquet" package wit
 • Total Contract Estimate: ${totalEstimated.toLocaleString('en-US')} IRT
 • 30% Cash Down Payment: ${downPayment.toLocaleString('en-US')} IRT
 • 6 Sayyadi Check Installments: ${sixMonthCheck.toLocaleString('en-US')} IRT per check (0% interest on Flash Dates).`;
+  }
+
+  if (lang === 'KU') {
+    return `👑 وەڵامدەرەوەی خۆکاری زیرەکی EventMate VIP (ستەیجی FBNM):
+بۆ **${guests.toLocaleString('fa-IR')} میوان**، پێشنیاری پاکێجی شاهانە دەکەین (باقلاپڵاو بە گۆشتی بەرخ + چڵەوکەبابی سوڵتانی زەعفەرانی + زەڵاتە بار و میوەی نایاب و گوڵڕازاندنەوە):
+• تێچووی هەر میوانێک: ${perGuest.toLocaleString('fa-IR')} تەمەن
+• کۆی گشتی گرێبەست: ${totalEstimated.toLocaleString('fa-IR')} تەمەن
+• پێشەکی کاش (٣٠٪): ${downPayment.toLocaleString('fa-IR')} تەمەن
+• قیستی ٦ مانگە بە چەکی سەیادی: مانگانە ${sixMonthCheck.toLocaleString('fa-IR')} تەمەن.`;
+  }
+
+  if (lang === 'HY') {
+    return `👑 EventMate VIP Խելացի Ավտոպատասխանիչ (FBNM Բեմ):
+${guests} հյուրերի համար առաջարկում ենք «Արքայական Այգի և Սրահ» փաթեթը (Սոլթանի քյաբաբ + գառան միս զաֆրանով, 4 տեսակի աղցան, ընտիր մրգեր և բեմի լուսավորություն).
+• Մեկ հյուրի արժեքը՝ ${perGuest.toLocaleString('en-US')} Թուման
+• Պայմանագրի ընդհանուր գումարը՝ ${totalEstimated.toLocaleString('en-US')} Թուման
+• 30% կանխավճար՝ ${downPayment.toLocaleString('en-US')} Թուման
+• 6 ամիս Սայադի չեկերով ապառիկ՝ ամսական ${sixMonthCheck.toLocaleString('en-US')} Թուման։`;
   }
 
   return `👑 پاسخگوی خودکار هوشمند EventMate VIP (توان استیج FBNM):
@@ -424,6 +630,65 @@ app.get('/api/android/files', (_req, res) => {
     res.status(500).json({
       error: error instanceof Error ? error.message : 'Unable to read /android directory',
     });
+  }
+});
+
+// 6.1. Direct 1-Click File Download for Gradle, Workflow & Manifest
+app.get('/api/android/download', (req, res) => {
+  try {
+    const requestedFile = String(req.query.file || 'android/app/build.gradle');
+    const androidDir = path.join(__dirname, 'android');
+    const files = getAndroidProjectFiles(androidDir, androidDir);
+    const match = files.find((f) => f.relativePath === requestedFile) || files[0];
+    if (!match) {
+      return res.status(404).send('File not found');
+    }
+    const baseName = path.basename(match.relativePath);
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${baseName}"`);
+    return res.send(match.content);
+  } catch (error) {
+    return res.status(500).send(error instanceof Error ? error.message : 'Download error');
+  }
+});
+
+// 6.2. Direct 1-Click Download of Complete Self-Extracting Android + Myket + Bazaar + GitHub Auto-Builder
+app.get('/api/android/download-bundle', (_req, res) => {
+  try {
+    const androidDir = path.join(__dirname, 'android');
+    const files = getAndroidProjectFiles(androidDir, androidDir);
+    const lines: string[] = [
+      '#!/usr/bin/env bash',
+      '# ============================================================================',
+      '# EventMate VIP | ایونت‌مِیت — 1-Click Automated Android + Gradle + Keystore Setup',
+      '# Ready for GitHub Releases, Myket (مایکت), and Cafe Bazaar (کافه‌بازار / بازارچه)',
+      '# ============================================================================',
+      'set -e',
+      'echo "👑 Creating EventMate VIP Android Project & Automated Signing Workflow..."',
+    ];
+
+    for (const file of files) {
+      const dirName = path.posix.dirname(file.relativePath);
+      lines.push(`mkdir -p "${dirName}"`);
+      lines.push(`cat << 'EOF_EVENTMATE_FILE' > "${file.relativePath}"`);
+      lines.push(file.content);
+      lines.push('EOF_EVENTMATE_FILE');
+      if (file.relativePath === 'android/android-release-workflow.yml') {
+        lines.push('mkdir -p ".github/workflows"');
+        lines.push('cp "android/android-release-workflow.yml" ".github/workflows/android-release.yml"');
+      }
+    }
+
+    lines.push('echo "✅ تمام فایل‌های Gradle، امضای خودکار Keystore و ورک‌فلو مایکت/بازار/گیت‌هاب ساخته شدند!"');
+    const scriptContent = lines.join('\n');
+    res.setHeader('Content-Type', 'text/x-shellscript; charset=utf-8');
+    res.setHeader(
+      'Content-Disposition',
+      'attachment; filename="EventMate-VIP-Android-Gradle-AutoSetup.sh"',
+    );
+    return res.send(scriptContent);
+  } catch (error) {
+    return res.status(500).send(error instanceof Error ? error.message : 'Bundle export error');
   }
 });
 

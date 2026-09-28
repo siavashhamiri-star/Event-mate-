@@ -3,10 +3,11 @@ plugins {
 }
 
 // ============================================================================
-// 100% Automated Zero-Leak Environment & Secret Resolver for Gradle
-// Priority: 1) OS Environment Variable (GitHub Actions / Cloud CI)
-//           2) Project Gradle Property (gradle.properties / -P CLI flag)
-//           3) Safe Production Proxy Fallback (Zero Private Keys in APK/AAB)
+// 100% Automated Zero-Touch Environment, API Proxy & Keystore Resolver
+// Zero manual action required by user:
+// 1) Automatically resolves Server Proxy URLs (private API keys stay in server.ts)
+// 2) Automatically generates RSA-2048 Release Keystore if not present on disk
+// 3) Signs APK (V1+V2+V3) & AAB for GitHub Releases, Myket (مایکت) & Cafe Bazaar (بازارچه/بازار)
 // ============================================================================
 def getSecureEnvOrProp = { String envKey, String propKey, String fallbackValue ->
     def envVal = System.getenv(envKey)
@@ -21,6 +22,39 @@ def getSecureEnvOrProp = { String envKey, String propKey, String fallbackValue -
     }
     return fallbackValue
 }
+
+def resolvedStoreFile = file(getSecureEnvOrProp("KEYSTORE_FILE", "RELEASE_STORE_FILE", "../eventmate-release.keystore"))
+def resolvedStorePassword = getSecureEnvOrProp("KEYSTORE_PASSWORD", "RELEASE_STORE_PASSWORD", "EventMateVIP2026")
+def resolvedKeyAlias = getSecureEnvOrProp("KEY_ALIAS", "RELEASE_KEY_ALIAS", "eventmate_vip")
+def resolvedKeyPassword = getSecureEnvOrProp("KEY_PASSWORD", "RELEASE_KEY_PASSWORD", "EventMateVIP2026")
+
+// Self-healing Gradle task: automatically creates the RSA-2048 signing keystore if missing
+tasks.register("autoProvisionReleaseKeystore") {
+    description = "Automatically generates RSA-2048 production keystore if none exists (Zero Manual Setup)"
+    doLast {
+        if (!resolvedStoreFile.exists()) {
+            println "🔐 [EventMate VIP Auto-Vault] Generating RSA-2048 Release Keystore at: ${resolvedStoreFile.absolutePath}"
+            resolvedStoreFile.parentFile.mkdirs()
+            exec {
+                commandLine(
+                    "keytool", "-genkeypair", "-v",
+                    "-keystore", resolvedStoreFile.absolutePath,
+                    "-alias", resolvedKeyAlias,
+                    "-keyalg", "RSA",
+                    "-keysize", "2048",
+                    "-validity", "10000",
+                    "-storepass", resolvedStorePassword,
+                    "-keypass", resolvedKeyPassword,
+                    "-dname", "CN=EventMate VIP, OU=FBNM Stage, O=New Metaversity, L=Tehran, S=Tehran, C=IR"
+                )
+            }
+        } else {
+            println "✅ [EventMate VIP Auto-Vault] Existing Release Keystore verified: ${resolvedStoreFile.name}"
+        }
+    }
+}
+
+preBuild.dependsOn("autoProvisionReleaseKeystore")
 
 android {
     namespace "com.eventmate.vip"
@@ -54,6 +88,8 @@ android {
         buildConfigField "String", "SERVER_PROXY_RATES", "\"${apiBaseUrl}/api/rates\""
         buildConfigField "String", "SERVER_PROXY_OAUTH_CONFIG", "\"${apiBaseUrl}/api/auth/oauth-config\""
         buildConfigField "String", "PUBLIC_OAUTH_CLIENT_ID", "\"${publicClientId}\""
+        buildConfigField "String", "SUPPORTED_MARKETS", "\"GITHUB,MYKET,CAFE_BAZAAR,GOOGLE_PLAY\""
+        buildConfigField "String", "SUPPORTED_LANGUAGES", "\"FA,EN,AR,TR,KU,HY,RU\""
 
         manifestPlaceholders = [
             appHostUrl: apiBaseUrl
@@ -62,12 +98,11 @@ android {
 
     signingConfigs {
         release {
-            // Automated GitHub Secrets (KEYSTORE_FILE / KEYSTORE_PASSWORD / KEY_ALIAS / KEY_PASSWORD)
-            // with automatic zero-config fallback to CI-generated RSA-2048 keystore
-            storeFile file(getSecureEnvOrProp("KEYSTORE_FILE", "RELEASE_STORE_FILE", "../eventmate-release.keystore"))
-            storePassword getSecureEnvOrProp("KEYSTORE_PASSWORD", "RELEASE_STORE_PASSWORD", "EventMateVIP2026")
-            keyAlias getSecureEnvOrProp("KEY_ALIAS", "RELEASE_KEY_ALIAS", "eventmate_vip")
-            keyPassword getSecureEnvOrProp("KEY_PASSWORD", "RELEASE_KEY_PASSWORD", "EventMateVIP2026")
+            storeFile resolvedStoreFile
+            storePassword resolvedStorePassword
+            keyAlias resolvedKeyAlias
+            keyPassword resolvedKeyPassword
+            // V1 + V2 + V3 enabled for 100% compatibility with Myket (مایکت), Cafe Bazaar (بازارچه/بازار), and GitHub
             enableV1Signing true
             enableV2Signing true
             enableV3Signing true
@@ -87,9 +122,10 @@ android {
         }
     }
 
+    // Android App Bundle (.aab) configuration for Cafe Bazaar & Google Play
     bundle {
         language {
-            enableSplit = false
+            enableSplit = false // Keep all 7 languages (FA, EN, AR, TR, KU, HY, RU) available offline/online
         }
         density {
             enableSplit = true

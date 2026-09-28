@@ -7,6 +7,7 @@ import {
   Code2,
   Copy,
   Cpu,
+  Download,
   ExternalLink,
   GitBranch,
   Handshake,
@@ -20,7 +21,7 @@ import {
 } from 'lucide-react';
 import {CurrencyCode, LanguageCode} from '../types';
 import {HALL_MARKETER_TIERS, UI_TEXT} from '../data';
-import {formatMoney, formatNumberLocale} from '../utils/formatters';
+import {formatMoney, formatNumberLocale, pickText} from '../utils/formatters';
 
 interface MarketerAndAndroidHubProps {
   lang: LanguageCode;
@@ -227,16 +228,18 @@ export const MarketerAndAndroidHub: React.FC<MarketerAndAndroidHubProps> = ({
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="px-3 py-1 rounded-full text-xs font-extrabold bg-[#2C1E16] text-[#E6C258]">
-                    {tier.badge[lang]}
+                    {pickText(tier.badge, lang)}
                   </span>
                   <span className="font-mono-num text-xl font-black text-[#E11D48]">
                     {formatNumberLocale(tier.commissionPercent, lang)}%
                   </span>
                 </div>
                 <h3 className="font-extrabold text-base text-[#2C1E16] leading-snug">
-                  {tier.title[lang]}
+                  {pickText(tier.title, lang)}
                 </h3>
-                <p className="text-xs text-[#6E5A4F] leading-relaxed">{tier.details[lang]}</p>
+                <p className="text-xs text-[#6E5A4F] leading-relaxed">
+                  {pickText(tier.details, lang)}
+                </p>
               </div>
 
               <div className="mt-4 pt-3 border-t border-[#E6DFD3] flex items-center justify-between text-xs">
@@ -555,7 +558,7 @@ export const MarketerAndAndroidHub: React.FC<MarketerAndAndroidHubProps> = ({
                 <span>
                   {pushLoading
                     ? 'در حال بررسی و ارسال فایل‌های Gradle و ورک‌فلو...'
-                    : 'اجرای پوش مستقیم (/api/github/direct-push) و بیلد APK/AAB'}
+                    : 'اجرای اتوماسیون (/api/github/direct-push) و بیلد APK/AAB'}
                 </span>
               </button>
 
@@ -575,7 +578,60 @@ export const MarketerAndAndroidHub: React.FC<MarketerAndAndroidHubProps> = ({
 
             <div className="text-xs text-[#6E5A4F] flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-[#C59B27]" />
-              <span>خروجی‌ها: `EventMate-VIP-v1.0.0.apk` و `EventMate-VIP-v1.0.0.aab`</span>
+              <span>خروجی‌های امضاشده: ویژه مایکت، کافه‌بازار / بازارچه و GitHub Releases</span>
+            </div>
+          </div>
+
+          {/* 1-CLICK DIRECT FILE EXPORT & DOWNLOAD BAR (خروجی مستقیم فایل‌های Gradle و ورک‌فلو از داخل برنامه) */}
+          <div className="p-4 rounded-2xl bg-white border-2 border-emerald-400 space-y-3">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="text-xs font-extrabold text-emerald-900 flex items-center gap-1.5">
+                <Download className="w-4 h-4 text-emerald-600" />
+                <span>
+                  خروجی و دانلود ۱-کلیکی فایل‌های آماده انتشار در گیت‌هاب، مایکت (Myket) و کافه‌بازار / بازارچه (بدون نیاز به تنظیم دستی کلید):
+                </span>
+              </div>
+              <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-bold">
+                امضای خودکار RSA-2048 (V1 + V2 + V3)
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+              <a
+                href="/api/android/download?file=android/app/build.gradle"
+                download="build.gradle"
+                className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-emerald-700 text-white font-extrabold text-xs shadow hover:bg-emerald-800 transition"
+              >
+                <Download className="w-4 h-4 shrink-0" />
+                <span>دانلود فایل build.gradle</span>
+              </a>
+
+              <a
+                href="/api/android/download?file=android/android-release-workflow.yml"
+                download="android-release.yml"
+                className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-[#2C1E16] text-[#E6C258] border border-[#C59B27] font-extrabold text-xs hover:bg-[#3E2723] transition"
+              >
+                <Download className="w-4 h-4 shrink-0 text-[#E11D48]" />
+                <span>دانلود ورک‌فلو گیت‌هاب (.yml)</span>
+              </a>
+
+              <a
+                href="/api/android/download?file=android/app/src/main/AndroidManifest.xml"
+                download="AndroidManifest.xml"
+                className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-[#FAF7F2] text-[#2C1E16] border border-[#D4AF37] font-extrabold text-xs hover:bg-amber-50 transition"
+              >
+                <Download className="w-4 h-4 shrink-0 text-[#9A7411]" />
+                <span>دانلود AndroidManifest.xml</span>
+              </a>
+
+              <a
+                href="/api/android/download-bundle"
+                download="EventMate-VIP-Android-Gradle-AutoSetup.sh"
+                className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-gradient-to-r from-[#E11D48] to-[#D4AF37] text-white font-extrabold text-xs shadow hover:brightness-105 transition"
+              >
+                <Download className="w-4 h-4 shrink-0" />
+                <span>دانلود یکجای کل پکیج اندروید (.sh)</span>
+              </a>
             </div>
           </div>
 
@@ -750,6 +806,30 @@ export const MarketerAndAndroidHub: React.FC<MarketerAndAndroidHubProps> = ({
               </h4>
               <p className="text-xs text-[#6E5A4F] leading-relaxed">
                 امکان انتقال محترمانه و بهداشتی غذاهای دست‌نخورده پایان مراسم با بسته‌بندی VIP به خیریه‌های معتبر به نام عروس و داماد + بیمه هوشمند انتقال فوری مراسم از فضای باز به سالن مسقف در صورت بارندگی.
+              </p>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-white border border-rose-200 hover:border-[#E11D48] transition space-y-1.5">
+              <div className="text-xs font-extrabold text-amber-700">
+                💡 پیشنهاد خلاقانه ۵ (قفل ضدتورم طلایی تالار)
+              </div>
+              <h4 className="font-black text-sm text-[#2C1E16]">
+                قرارداد «قفل نرخ مواد اولیه با شاخص طلا/ارز» (Inflation-Shield)
+              </h4>
+              <p className="text-xs text-[#6E5A4F] leading-relaxed">
+                چون عروس و داماد ۶ ماه قبل از مراسم قرارداد می‌بندند، با پرداخت ۳۰٪ پیش‌پرداخت، سیستم به صورت خودکار حواله خرید برنج، گوشت و اقلام پذیرایی را در نرخ روز برای تالاردار قفل می‌کند تا هیچ‌یک از طرفین متضرر نشوند.
+              </p>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-white border border-rose-200 hover:border-[#E11D48] transition space-y-1.5">
+              <div className="text-xs font-extrabold text-sky-700">
+                💡 پیشنهاد خلاقانه ۶ (تست زنده منو و استعلام آنی صیادی)
+              </div>
+              <h4 className="font-black text-sm text-[#2C1E16]">
+                رزرو «شب تست غذای VIP (VIP Food Tasting)» + استعلام رنگ چک صیادی
+              </h4>
+              <p className="text-xs text-[#6E5A4F] leading-relaxed">
+                امکان رزرو میز ۲ نفره تست غذای سرآشپز پیش از عقد قرارداد نهایی + استعلام آنی وضعیت خوش‌حسابی چک صیادی (وضعیت سفید بانک مرکزی) جهت تضمین ۱۰۰٪ امنیت مالی تالاردار.
               </p>
             </div>
           </div>

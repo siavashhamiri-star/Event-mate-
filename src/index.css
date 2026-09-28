@@ -73,7 +73,7 @@
   border-radius: 9999px;
 }
 
-/* Accessibility: High Contrast Mode for Low Vision */
+/* Accessibility: High Contrast Mode for Low Vision (WCAG AAA) */
 body.a11y-high-contrast {
   background-color: #FFFFFF !important;
   background-image: none !important;
@@ -81,27 +81,42 @@ body.a11y-high-contrast {
 }
 body.a11y-high-contrast .luxury-card {
   background-color: #FFFFFF !important;
-  border-color: #1E130D !important;
-  border-width: 2px !important;
+  border-color: #000000 !important;
+  border-width: 3px !important;
   box-shadow: none !important;
 }
 
 /* Accessibility: Readable Dyslexia / Low-Vision Spacing */
 body.a11y-readable-spacing {
   letter-spacing: 0.03em !important;
-  line-height: 1.95 !important;
-  word-spacing: 0.1em !important;
+  line-height: 2.0 !important;
+  word-spacing: 0.12em !important;
 }
 
-/* Accessibility: ADHD Focus Mode */
+/* Accessibility: Motor Disability & Tremor Assist (Large Touch Targets) */
+body.a11y-motor-large button,
+body.a11y-motor-large a,
+body.a11y-motor-large input[type="range"],
+body.a11y-motor-large input[type="text"],
+body.a11y-motor-large input[type="tel"] {
+  min-height: 48px !important;
+  padding-top: 0.65rem !important;
+  padding-bottom: 0.65rem !important;
+}
+body.a11y-motor-large *:focus-visible {
+  outline: 4px solid #E11D48 !important;
+  outline-offset: 4px !important;
+}
+
+/* Accessibility: ADHD Deep Focus Mode */
 body.a11y-adhd-focus * {
   animation-duration: 0.001ms !important;
   animation-iteration-count: 1 !important;
   transition-duration: 0.05s !important;
 }
 body.a11y-adhd-focus .adhd-dimmable {
-  opacity: 0.38;
-  filter: grayscale(35%);
+  opacity: 0.34;
+  filter: grayscale(40%);
   transition: opacity 0.2s ease, filter 0.2s ease;
 }
 body.a11y-adhd-focus .adhd-dimmable:hover,

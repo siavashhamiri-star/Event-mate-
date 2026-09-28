@@ -1,4 +1,4 @@
-name: EventMate VIP — Android Signed APK & AAB Auto-Release (FBNM)
+name: EventMate VIP — Signed APK & AAB Auto-Release (GitHub + Myket + Cafe Bazaar)
 
 on:
   push:
@@ -19,7 +19,7 @@ permissions:
 
 jobs:
   build-signed-apk-and-aab:
-    name: Build & Sign APK + AAB (com.eventmate.vip)
+    name: Build & Sign APK + AAB (GitHub, Myket مایکت, Cafe Bazaar بازار)
     runs-on: ubuntu-latest
 
     steps:
@@ -40,7 +40,7 @@ jobs:
         with:
           gradle-version: '8.7'
 
-      - name: Provision Production Signing Keystore (Secrets or Auto-RSA-2048)
+      - name: Auto-Provision Production Signing Keystore (Zero Manual Setup Required)
         working-directory: ./android
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
@@ -52,7 +52,7 @@ jobs:
             echo "🔐 Decoding custom production Keystore from GitHub Secrets..."
             echo "$KEYSTORE_BASE64" | base64 --decode > eventmate-release.keystore
           else
-            echo "🔑 Generating automated RSA-2048 Production Keystore for com.eventmate.vip..."
+            echo "🔑 Auto-Generating RSA-2048 Production Keystore (V1/V2/V3) for Myket, Cafe Bazaar & GitHub..."
             STORE_PASS="${KEYSTORE_PASSWORD:-EventMateVIP2026}"
             ALIAS_NAME="${KEY_ALIAS:-eventmate_vip}"
             KEY_PASS="${KEY_PASSWORD:-EventMateVIP2026}"
@@ -67,7 +67,7 @@ jobs:
               -dname "CN=EventMate VIP, OU=FBNM Stage, O=New Metaversity, L=Tehran, S=Tehran, C=IR"
           fi
 
-      - name: Build Signed Release APK & Play Store AAB via Gradle (Automated Env Injection)
+      - name: Build Signed Release APK & Store AAB via Gradle (Automated Proxy Injection)
         working-directory: ./android
         env:
           EVENTMATE_API_BASE_URL: ${{ secrets.EVENTMATE_API_BASE_URL || 'https://ais-pre-omeitfmbn6thcwrha6aqzc-453570687245.europe-west2.run.app' }}
@@ -79,37 +79,43 @@ jobs:
         run: |
           gradle assembleRelease bundleRelease --no-daemon --stacktrace
 
-      - name: Verify Digital Signatures & Generate SHA-256 Checksums
+      - name: Package Store-Ready Signed Outputs (GitHub, Myket مایکت, Cafe Bazaar بازارچه)
         run: |
           mkdir -p release-artifacts
-          cp android/app/build/outputs/apk/release/*.apk release-artifacts/EventMate-VIP-v1.0.0.apk
-          cp android/app/build/outputs/bundle/release/*.aab release-artifacts/EventMate-VIP-v1.0.0.aab
-          jarsigner -verify -verbose -certs release-artifacts/EventMate-VIP-v1.0.0.aab || true
-          cd release-artifacts && sha256sum EventMate-VIP-v1.0.0.apk EventMate-VIP-v1.0.0.aab > SHA256SUMS.txt
+          cp android/app/build/outputs/apk/release/*.apk release-artifacts/EventMate-VIP-v1.0.0-Universal.apk
+          cp android/app/build/outputs/apk/release/*.apk release-artifacts/EventMate-VIP-v1.0.0-Myket.apk
+          cp android/app/build/outputs/apk/release/*.apk release-artifacts/EventMate-VIP-v1.0.0-CafeBazaar.apk
+          cp android/app/build/outputs/bundle/release/*.aab release-artifacts/EventMate-VIP-v1.0.0-StoreBundle.aab
+          jarsigner -verify -verbose -certs release-artifacts/EventMate-VIP-v1.0.0-StoreBundle.aab || true
+          cd release-artifacts && sha256sum *.apk *.aab > SHA256SUMS.txt
 
-      - name: Upload Signed APK, AAB & SHA256 Artifacts
+      - name: Upload Signed Store Packages (Myket, Bazaar, GitHub)
         uses: actions/upload-artifact@v4
         with:
-          name: EventMate-VIP-Signed-Android-Packages
+          name: EventMate-VIP-Signed-Myket-Bazaar-GitHub-Packages
           path: release-artifacts/*
 
       - name: Publish Signed APK & AAB to GitHub Releases
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event.inputs.release_tag || 'v1.0.0-vip' }}
-          name: "EventMate VIP | ایونت‌مِیت — نسخه رسمی امضاشده اندروید (APK + AAB)"
+          name: "EventMate VIP | ایونت‌مِیت — نسخه امضاشده ویژه مایکت، بازار و گیت‌هاب (APK + AAB)"
           body: |
             ### 👑 EventMate VIP | ایونت‌مِیت (`com.eventmate.vip`)
             **اکوسیستم آفرینش | شهر جدید نیومتاورسیتی جهان | توان استیج FBNM**
             
-            - 📦 **فایل نصبی مستقیم اندروید (Signed APK V1/V2/V3):** `EventMate-VIP-v1.0.0.apk`
-            - 🏪 **باندل رسمی گوگل‌پلی و کافه‌بازار (Signed AAB):** `EventMate-VIP-v1.0.0.aab`
-            - 🔐 **فایل هش اعتبارسنجی امضا:** `SHA256SUMS.txt`
-            - 🛡️ **اتوماسیون ۱۰۰٪ امن کلیدهای API:** ایزوله در سرور پراکسی (`server.ts`) بدون افشای کلید در باینری کلاینت.
-            - ✨ منوساز زنده، شخصی‌سازی White-Label تالارها، محاسبه‌گر اقساط چک صیادی، تقویم شب‌های خالی، استوری‌ساز HD، دسترس‌پذیری کم‌بینایان و ADHD، و باشگاه ویزیتورها با ۲۵٪ سهم سود فروش.
+            - 📦 **نسخه ویژه انتشار در مایکت (Myket Signed APK V1/V2/V3):** `EventMate-VIP-v1.0.0-Myket.apk`
+            - 🛍️ **نسخه ویژه انتشار در کافه‌بازار / بازارچه (Bazaar Signed APK):** `EventMate-VIP-v1.0.0-CafeBazaar.apk`
+            - 📲 **نسخه نصب مستقیم گیت‌هاب (Universal Signed APK):** `EventMate-VIP-v1.0.0-Universal.apk`
+            - 🏪 **باندل رسمی گوگل‌پلی و پیشخوان بازار (Signed AAB):** `EventMate-VIP-v1.0.0-StoreBundle.aab`
+            - 🔐 **گواهی هش امضای دیجیتال:** `SHA256SUMS.txt`
+            - 🌐 **پشتیبانی کامل از ۷ زبان زنده:** فارسی (FA)، انگلیسی (EN)، عربی (AR)، ترکی (TR)، کُردی (KU)، ارمنی (HY) و روسی (RU)
+            - ♿ **دسترس‌پذیری کامل معلولان (نابینایان، کم‌بینایان، معلولیت حرکتی) و حالت تمرکز عمیق ADHD**
           files: |
-            release-artifacts/EventMate-VIP-v1.0.0.apk
-            release-artifacts/EventMate-VIP-v1.0.0.aab
+            release-artifacts/EventMate-VIP-v1.0.0-Universal.apk
+            release-artifacts/EventMate-VIP-v1.0.0-Myket.apk
+            release-artifacts/EventMate-VIP-v1.0.0-CafeBazaar.apk
+            release-artifacts/EventMate-VIP-v1.0.0-StoreBundle.aab
             release-artifacts/SHA256SUMS.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

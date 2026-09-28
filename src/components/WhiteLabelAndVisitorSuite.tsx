@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import {
   Award,
   BadgePercent,
@@ -9,11 +9,14 @@ import {
   FileText,
   Flame,
   Handshake,
+  Landmark,
   Link2,
+  Lock,
   Palette,
   PartyPopper,
   Printer,
   Send,
+  ShieldCheck,
   Sparkles,
   TrendingUp,
   UserCheck,
@@ -24,6 +27,8 @@ import {HALL_BRAND_PRESETS, WHY_HALL_OWNERS_BUY_ITEMS} from '../data';
 import {formatMoney, formatNumberLocale} from '../utils/formatters';
 
 export interface CustomHallBrand {
+  tenantSlug?: string;
+  logoMonogram?: string;
   hallName: string;
   agencyType: string;
   managerName: string;
@@ -31,6 +36,21 @@ export interface CustomHallBrand {
   whatsapp: string;
   slogan: string;
   priceMultiplier: number;
+}
+
+interface SoldLicenseEntry {
+  id: string;
+  hallName: string;
+  tenantSlug: string;
+  city: string;
+  visitorCode: string;
+  visitorName: string;
+  visitorSheba: string;
+  licenseTierTitle: string;
+  totalSaleToman: number;
+  commission25Toman: number;
+  payoutStatus: 'SETTLED_SHEBA' | 'PENDING_SHEBA';
+  soldAt: string;
 }
 
 interface WhiteLabelAndVisitorSuiteProps {
@@ -55,9 +75,212 @@ export const WhiteLabelAndVisitorSuite: React.FC<WhiteLabelAndVisitorSuiteProps>
   // Invitation Letter & 25% Profit-Share Visitor Pitch State
   const [visitorName, setVisitorName] = useState('مهندس کامران رضایی (سفیر رسمی فروش)');
   const [visitorPhone, setVisitorPhone] = useState('09121112233');
-  const [visitorCode, setVisitorCode] = useState('EVM-VIP-2500');
+  const [visitorCode, setVisitorCode] = useState(
+    () => new URLSearchParams(window.location.search).get('ref') || 'EVM-VIP-2500',
+  );
+  const [visitorSheba, setVisitorSheba] = useState('IR820540102680020817909002');
   const [selectedLicensePriceToman, setSelectedLicensePriceToman] = useState<number>(48000000);
   const [monthlySalesTarget, setMonthlySalesTarget] = useState<number>(5);
+  const [soldLicenses, setSoldLicenses] = useState<SoldLicenseEntry[]>([]);
+  const [registeringSale, setRegisteringSale] = useState(false);
+  const [saleSuccessBanner, setSaleSuccessBanner] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (mode !== 'full-pitch-and-invitation') return;
+    fetch('/api/visitors/sales')
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data?.sales)) {
+          setSoldLicenses(data.sales);
+        }
+      })
+      .catch(() => {
+        // Fallback if offline
+      });
+  }, [mode]);
+
+  const handleRecordLicenseSale = async () => {
+    setRegisteringSale(true);
+    const tierTitle =
+      selectedLicensePriceToman === 96000000
+        ? 'لایسنس سازمانی VIP هتل و مجموعه تالار'
+        : 'لایسنس اختصاصی ایزوله تالار (White-Label)';
+    const slug =
+      customBrand.tenantSlug ||
+      customBrand.hallName
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '-')
+        .replace(/-+/g, '-') ||
+      'royal-palace';
+
+    try {
+      const res = await fetch('/api/visitors/sales', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          hallName: customBrand.hallName,
+          tenantSlug: slug,
+          city: customBrand.city,
+          visitorCode,
+          visitorName,
+          visitorSheba,
+          licenseTierTitle: tierTitle,
+          totalSaleToman: selectedLicensePriceToman,
+        }),
+      });
+      const data = await res.json();
+      if (data?.sale) {
+        setSoldLicenses((prev) => [data.sale, ...prev]);
+        setSaleSuccessBanner(
+          data.message ||
+            `✅ لایسنس «${customBrand.hallName}» ثبت شد و ۲۵٪ پورسانت نقدی به شبا ${visitorSheba} منظور گردید!`,
+        );
+      }
+    } catch {
+      const comm = Math.round(selectedLicensePriceToman * 0.25);
+      const fallbackSale: SoldLicenseEntry = {
+        id: `sale-${Date.now()}`,
+        hallName: customBrand.hallName,
+        tenantSlug: slug,
+        city: customBrand.city,
+        visitorCode,
+        visitorName,
+        visitorSheba,
+        licenseTierTitle: tierTitle,
+        totalSaleToman: selectedLicensePriceToman,
+        commission25Toman: comm,
+        payoutStatus: 'SETTLED_SHEBA',
+        soldAt: new Date().toISOString(),
+      };
+      setSoldLicenses((prev) => [fallbackSale, ...prev]);
+      setSaleSuccessBanner(
+        `✅ فروش لایسنس ثبت شد! سهم ۲۵٪ شما (${formatMoney(comm, currency, lang)}) برای واریز به شبا ${visitorSheba} تایید گردید.`,
+      );
+    } finally {
+      setRegisteringSale(false);
+    }
+  };
+
+  // Live Hall Advertising & Sponsorship Showcase State
+  const [featuredHallAds, setFeaturedHallAds] = useState([
+    {
+      id: 'ad-1',
+      hallName: 'کاخ‌تالار و باغ‌عمارت رویال فرشته',
+      city: 'تهران — فرشته و الهیه',
+      managerName: 'حاج محمد رادمنش',
+      whatsapp: '989123456789',
+      offerHeadline: '۲۲٪ تخفیف ویژه پاییز + آتش‌بازی سرد و گل‌آرایی هلندی رایگان',
+      capacity: '۱۵۰ تا ۸۰۰ نفر',
+      tierBadge: 'آگهی ویژه طلایی (VIP Pin)',
+      priceMultiplier: 1.0,
+    },
+    {
+      id: 'ad-2',
+      hallName: 'باغ‌تالار عمارت شیشه‌ای قصر طلایی لواسان',
+      city: 'لواسان — ویو ابدی کوهستان',
+      managerName: 'مهندس شهرام کیانی',
+      whatsapp: '989121112233',
+      offerHeadline: 'ورودی باغ ۱۰۰٪ رایگان در شب‌های نیمه‌هفته + تقسیط ۱۰ ماهه چک صیادی',
+      capacity: '۲۰۰ تا ۱۰۰۰ نفر',
+      tierBadge: 'اسپانسر شب‌های خالی (Flash Ad)',
+      priceMultiplier: 1.1,
+    },
+    {
+      id: 'ad-3',
+      hallName: 'مجموعه تشریفات و تالار ساحلی امپریال کیش',
+      city: 'جزیره کیش — بلوار مرجان',
+      managerName: 'دکتر آرش فرهمند',
+      whatsapp: '989129998877',
+      offerHeadline: 'اقامت سوئیت رویال عروس و داماد + هلی‌شات 4K دریایی رایگان',
+      capacity: '۱۰۰ تا ۶۰۰ نفر',
+      tierBadge: 'برگزیده منوساز هوشمند',
+      priceMultiplier: 1.15,
+    },
+  ]);
+
+  const [newAdHallName, setNewAdHallName] = useState('');
+  const [newAdCity, setNewAdCity] = useState('تهران');
+  const [newAdOffer, setNewAdOffer] = useState('۲۰٪ تخفیف عقد قرارداد + ورودی رایگان تالار');
+  const [newAdWhatsapp, setNewAdWhatsapp] = useState('09123456789');
+  const [selectedAdTierIndex, setSelectedAdTierIndex] = useState(1);
+  const [adPublishedNotice, setAdPublishedNotice] = useState<string | null>(null);
+
+  const HALL_AD_PACKAGES = [
+    {
+      id: 'ad-tier-1',
+      badge: 'جایگاه ۱ — صدر صفحه',
+      title: 'بنر طلایی صدر برنامه (Hero Gold Pin)',
+      duration: 'ماهانه',
+      priceToman: 12000000,
+      visitor25ShareToman: 3000000,
+      features: [
+        'نمایش دائمی نام و آفر تالار در ویترین طلایی بالای منوساز',
+        'دکمه ۱-کلیکی «بارگذاری منوی این تالار» برای عروس و دامادها',
+        'اتصال مستقیم دکمه رزرو به واتساپ مدیر تالار بدون واسطه',
+      ],
+    },
+    {
+      id: 'ad-tier-2',
+      badge: 'پرفروش‌ترین پکیج تبلیغاتی',
+      title: 'اسپانسر تقویم شب‌های خالی (Flash Dates Spotlight)',
+      duration: 'ماهانه',
+      priceToman: 18000000,
+      visitor25ShareToman: 4500000,
+      features: [
+        'نمایش اولویت‌دار شب‌های خالی تالار با نشان «پیشنهاد ویژه»',
+        'طراحی خودکار استوری اینستاگرام ۱۰۸۰×۱۹۲۰ برای شب‌های خالی',
+        'تضمین حداقل ۱۵۰ استعلام مستقیم پیش‌فاکتور در ماه',
+      ],
+    },
+    {
+      id: 'ad-tier-3',
+      badge: 'هوش مصنوعی + پیش‌فاکتور',
+      title: 'پیشنهاد هوشمند در منوساز و مشاور (Smart AI Ad)',
+      duration: '۳ ماهه',
+      priceToman: 36000000,
+      visitor25ShareToman: 9000000,
+      features: [
+        'معرفی خودکار تالار به عروس و دامادهای هم‌بودجه در مشاور هوشمند',
+        'درج بنر پیشنهادی تالار در پایین پیش‌فاکتورهای مقایسه‌ای',
+        'پشتیبانی تبلیغاتی به ۷ زبان (فارسی، انگلیسی، عربی، ترکی، کُردی، ارمنی و روسی)',
+      ],
+    },
+    {
+      id: 'ad-tier-4',
+      badge: 'پکیج جامع VIP سالانه',
+      title: 'کمپین VIP یک‌ساله + لایسنس کامل White-Label تالار',
+      duration: 'سالانه (۱۲ ماه)',
+      priceToman: 64000000,
+      visitor25ShareToman: 16000000,
+      features: [
+        'اختصاص کامل برنامه با نام، لوگو و منوی تالار + بنر طلایی سالانه',
+        'فعالسازی کامل محاسبه‌گر چک صیادی و ارسال فاکتور جیمیل و واتساپ',
+        'بیشترین بازدهی مالی برای تالاردار + ۱۶ میلیون تومان پورسانت نقدی ویزیتور',
+      ],
+    },
+  ];
+
+  const handlePublishLiveHallAd = (e: React.FormEvent) => {
+    e.preventDefault();
+    const chosenTier = HALL_AD_PACKAGES[selectedAdTierIndex] || HALL_AD_PACKAGES[0];
+    const targetName = newAdHallName.trim() || customBrand.hallName;
+    const createdAd = {
+      id: `ad-${Date.now()}`,
+      hallName: targetName,
+      city: newAdCity.trim() || customBrand.city,
+      managerName: customBrand.managerName,
+      whatsapp: newAdWhatsapp.trim() || customBrand.whatsapp,
+      offerHeadline: newAdOffer.trim() || 'تخفیف ویژه رزرو آنلاین + چک صیادی بدون کارمزد',
+      capacity: '۱۰۰ تا ۹۰۰ نفر',
+      tierBadge: chosenTier.title,
+      priceMultiplier: customBrand.priceMultiplier,
+    };
+    setFeaturedHallAds((prev) => [createdAd, ...prev]);
+    setAdPublishedNotice(
+      `🎉 آگهی ویژه «${targetName}» در ویترین زنده تبلیغات تالارها منتشر شد! (سهم ۲۵٪ ویزیتور از این پکیج تبلیغاتی: ${formatMoney(chosenTier.visitor25ShareToman, currency, lang)})`,
+    );
+    setNewAdHallName('');
+  };
 
   // 25% Profit Share Math
   const visitorProfitSharePercent = 25;
@@ -68,6 +291,8 @@ export const WhiteLabelAndVisitorSuite: React.FC<WhiteLabelAndVisitorSuiteProps>
 
   const handleSelectPreset = (preset: (typeof HALL_BRAND_PRESETS)[number]) => {
     onUpdateBrand({
+      tenantSlug: preset.slug,
+      logoMonogram: preset.logoMonogram,
       hallName: preset.hallName,
       agencyType: preset.agencyType,
       managerName: preset.managerName,
@@ -81,7 +306,7 @@ export const WhiteLabelAndVisitorSuite: React.FC<WhiteLabelAndVisitorSuiteProps>
   const buildPersonalizedDemoUrl = () => {
     const baseUrl = window.location.origin + window.location.pathname;
     const params = new URLSearchParams();
-    params.set('hall', customBrand.hallName);
+    params.set('hall', customBrand.tenantSlug || customBrand.hallName);
     params.set('manager', customBrand.managerName);
     params.set('city', customBrand.city);
     params.set('phone', customBrand.whatsapp);
@@ -147,17 +372,22 @@ ${buildPersonalizedDemoUrl()}
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-xs font-extrabold px-2.5 py-0.5 rounded-full bg-[#2C1E16] text-[#E6C258]">
-                  شخصی‌سازی آنی برند تالار و بنگاه تشریفات (White-Label)
+                  معماری ایزوله وایت‌لیبل (Isolated White-Label Tenant)
+                </span>
+                <span className="inline-flex items-center gap-1 text-[11px] font-mono-num font-extrabold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-300">
+                  <Lock className="w-3 h-3 text-emerald-700" />
+                  <span>?hall={customBrand.tenantSlug || 'royal-palace'} (ایزوله ۱۰۰٪)</span>
                 </span>
                 <span className="text-sm sm:text-base font-black text-[#E11D48]">
                   {customBrand.hallName}
                 </span>
               </div>
               <p className="text-xs text-[#6E5A4F] mt-0.5">
-                مدیریت: <b>{customBrand.managerName}</b> • {customBrand.city} • ضریب نرخ منو:{' '}
+                مدیریت: <b>{customBrand.managerName}</b> • {customBrand.city} • ضریب نرخ اختصاصی منو:{' '}
                 <span className="font-mono-num font-bold text-[#9A7411]">
                   {customBrand.priceMultiplier}x
-                </span>
+                </span>{' '}
+                • <span className="text-emerald-800 font-bold">اطلاعات و قیمت‌های این تالار کاملاً مستقل و محرمانه است</span>
               </p>
             </div>
           </div>
@@ -183,6 +413,63 @@ ${buildPersonalizedDemoUrl()}
               <FileText className="w-4 h-4 text-[#E11D48]" />
               <span>دعوت‌نامه تالاردار + ۲۵٪ سود ویزیتور</span>
             </a>
+
+            <a
+              href="#hall-ads"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-100 text-[#9A7411] border border-amber-300 font-extrabold text-xs hover:bg-amber-200 transition"
+            >
+              <Flame className="w-4 h-4 text-[#E11D48]" />
+              <span>تبلیغات تالارها و تعرفه آگهی</span>
+            </a>
+          </div>
+        </div>
+
+        {/* LIVE FEATURED HALL ADVERTISING RIBBON (Visible right at top of app) */}
+        <div className="px-4 sm:px-6 py-3 bg-gradient-to-r from-[#2C1E16] via-[#3E2723] to-[#2C1E16] text-[#FAF7F2] border-t border-[#C59B27]/40">
+          <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
+            <div className="flex items-center gap-1.5 text-xs font-extrabold text-[#E6C258]">
+              <Sparkles className="w-4 h-4 text-[#E11D48]" />
+              <span>ویترین تبلیغات ویژه تالارها و باغ‌عمارت‌های برگزیده (با ۱ کلیک منوی هر تالار را بارگذاری کنید):</span>
+            </div>
+            <a
+              href="#hall-ads"
+              className="text-[11px] font-bold text-rose-300 hover:text-white underline"
+            >
+              + ثبت آگهی تالار جدید و مشاهده شرایط تبلیغات (۲۵٪ پورسانت ویزیتور)
+            </a>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+            {featuredHallAds.slice(0, 3).map((ad) => (
+              <div
+                key={ad.id}
+                onClick={() =>
+                  onUpdateBrand({
+                    hallName: ad.hallName,
+                    agencyType: 'باغ‌تالار و تشریفات VIP',
+                    managerName: ad.managerName,
+                    city: ad.city,
+                    whatsapp: ad.whatsapp,
+                    slogan: ad.offerHeadline,
+                    priceMultiplier: ad.priceMultiplier,
+                  })
+                }
+                className="p-2.5 rounded-2xl bg-white/10 hover:bg-white/15 border border-[#C59B27]/50 transition cursor-pointer flex flex-col justify-between gap-1"
+              >
+                <div className="flex items-center justify-between gap-1">
+                  <span className="font-extrabold text-xs text-[#E6C258] truncate">
+                    👑 {ad.hallName}
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full bg-[#E11D48] text-white text-[10px] font-bold shrink-0">
+                    {ad.tierBadge}
+                  </span>
+                </div>
+                <p className="text-[11px] text-rose-100 line-clamp-1">{ad.offerHeadline}</p>
+                <div className="flex items-center justify-between text-[10px] text-[#E6DFD3] pt-0.5">
+                  <span>📍 {ad.city}</span>
+                  <span className="text-[#E6C258] font-bold">انتخاب و محاسبه منو ←</span>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
@@ -663,6 +950,48 @@ ${buildPersonalizedDemoUrl()}
                   </span>
                 </div>
               </div>
+
+              {/* Visitor SHEBA Input & 1-Click License Sale Registration */}
+              <div className="p-3.5 rounded-2xl bg-white border-2 border-emerald-400 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <label className="font-extrabold text-[#2C1E16] flex items-center gap-1">
+                    <Landmark className="w-4 h-4 text-emerald-700" />
+                    <span>شماره شبا ویزیتور (جهت واریز آنی ۲۵٪ پورسانت):</span>
+                  </label>
+                  <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-900 font-mono-num text-[10px] font-bold">
+                    تسویه خودکار پایا/ساتنا
+                  </span>
+                </div>
+                <input
+                  type="text"
+                  dir="ltr"
+                  value={visitorSheba}
+                  onChange={(e) => setVisitorSheba(e.target.value)}
+                  placeholder="IR820540102680020817909002"
+                  className="w-full px-3 py-2 rounded-xl bg-[#FAF7F2] border border-[#D4AF37] font-mono-num font-bold text-xs text-[#2C1E16]"
+                />
+                <div className="flex items-center justify-between text-[11px] text-[#6E5A4F]">
+                  <span>لینک اختصاصی ویزیتور:</span>
+                  <code className="font-mono-num font-bold text-[#E11D48]">
+                    ?hall={customBrand.tenantSlug || 'royal-palace'}&ref={visitorCode}
+                  </code>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleRecordLicenseSale}
+                  disabled={registeringSale}
+                  className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 text-white font-extrabold text-xs shadow hover:brightness-105 transition cursor-pointer"
+                >
+                  {registeringSale
+                    ? 'در حال ثبت لایسنس و حواله ۲۵٪ شبا...'
+                    : `ثبت فروش لایسنس «${customBrand.hallName}» و دریافت ۲۵٪ پورسانت (${formatMoney(profitPerSaleToman, currency, lang)})`}
+                </button>
+                {saleSuccessBanner && (
+                  <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-950 text-[11px] font-bold">
+                    {saleSuccessBanner}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -720,6 +1049,283 @@ ${buildPersonalizedDemoUrl()}
                 <Printer className="w-4 h-4" />
                 <span>چاپ / PDF دعوت‌نامه رسمی</span>
               </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Live Visitor 25% Commission Financial Ledger & SHEBA Payout Table */}
+        <div className="mt-8 rounded-2xl overflow-hidden border-2 border-[#C59B27] bg-white shadow-md">
+          <div className="bg-gradient-to-r from-[#2C1E16] via-[#3E2723] to-[#2C1E16] text-[#FAF7F2] px-5 py-3.5 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2 font-extrabold text-sm text-[#E6C258]">
+              <Landmark className="w-4 h-4 text-emerald-400" />
+              <span>گزارش مالی زنده لایسنس‌های فروخته‌شده به تالارها و تسویه ۲۵٪ پورسانت شبا (Visitor Hub Ledger)</span>
+            </div>
+            <div className="text-xs font-mono-num text-emerald-300 font-bold">
+              مجموع پورسانت ۲۵٪ تسویه‌شده:{' '}
+              {formatMoney(
+                soldLicenses.reduce((acc, s) => acc + s.commission25Toman, 0),
+                currency,
+                lang,
+              )}
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs text-start">
+              <thead className="bg-[#FAF7F2] text-[#6E5A4F] border-b border-[#E6DFD3]">
+                <tr>
+                  <th className="py-3 px-4 text-start font-extrabold">نام تالار (مستأجر ایزوله)</th>
+                  <th className="py-3 px-4 text-start font-extrabold">پارامتر URL ایزوله</th>
+                  <th className="py-3 px-4 text-start font-extrabold">ویزیتور و کد سفیر</th>
+                  <th className="py-3 px-4 text-start font-extrabold">مبلغ کل لایسنس</th>
+                  <th className="py-3 px-4 text-start font-extrabold">۲۵٪ پورسانت نقدی ویزیتور</th>
+                  <th className="py-3 px-4 text-start font-extrabold">شماره شبا و وضعیت واریز</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#E6DFD3]">
+                {soldLicenses.map((sale) => (
+                  <tr key={sale.id} className="hover:bg-[#FFFDF9]">
+                    <td className="py-3 px-4 font-black text-[#2C1E16]">
+                      {sale.hallName}
+                      <div className="text-[10px] text-[#6E5A4F] font-normal">{sale.licenseTierTitle}</div>
+                    </td>
+                    <td className="py-3 px-4 font-mono-num text-[11px] text-[#9A7411] font-bold">
+                      ?hall={sale.tenantSlug}
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="font-bold text-[#2C1E16]">{sale.visitorName}</div>
+                      <div className="font-mono-num text-[10px] text-[#E11D48]">?ref={sale.visitorCode}</div>
+                    </td>
+                    <td className="py-3 px-4 font-mono-num font-bold text-[#2C1E16]">
+                      {formatMoney(sale.totalSaleToman, currency, lang)}
+                    </td>
+                    <td className="py-3 px-4 font-mono-num font-black text-emerald-700 text-sm">
+                      {formatMoney(sale.commission25Toman, currency, lang)}
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="font-mono-num text-[11px] font-bold text-[#2C1E16]">{sale.visitorSheba}</div>
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900 text-[10px] font-extrabold mt-0.5">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                        <span>واریز قطعی ۲۵٪ به شبا</span>
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      {/* SECTION C: HALL ADVERTISING ENGINE & SPONSORSHIP PACKAGES (شرایط تبلیغات تالارها در برنامه + ۲۵٪ پورسانت ویزیتور) */}
+      <section
+        id="hall-ads"
+        className="luxury-card rounded-3xl p-6 sm:p-8 bg-gradient-to-br from-[#FFF9F5] via-[#FFFDF9] to-[#FEF9E7] border-2 border-[#C59B27] shadow-2xl adhd-dimmable"
+      >
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-6 border-b border-[#E6DFD3]">
+          <div>
+            <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-gradient-to-r from-[#2C1E16] via-[#E11D48] to-[#D4AF37] text-white text-xs font-extrabold shadow-sm">
+              <Flame className="w-4 h-4 text-[#E6C258]" />
+              <span>پلتفرم جامع تبلیغات تالارها و باغ‌عمارت‌ها + ۲۵٪ پورسانت جذب آگهی ویژه ویزیتورها</span>
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-black text-[#2C1E16] mt-2">
+              شرایط و تعرفه تبلیغات تالارها در برنامه + ثبت آنی بنر تبلیغاتی تالار
+            </h2>
+            <p className="text-sm text-[#6E5A4F] mt-1">
+              علاوه بر فروش لایسنس اختصاصی برنامه، تالارداران می‌توانند آفرهای شب‌های خالی و پکیج‌های عروسی خود را در صدر سامانه تبلیغ کنند؛ ویزیتورها از <b>هر قرارداد تبلیغاتی نیز ۲۵٪ سود خالص نقدی</b> دریافت می‌کنند!
+            </p>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-[#FFF0F3] border-2 border-[#E11D48] text-center shrink-0">
+            <div className="text-xs font-bold text-[#6E5A4F]">پورسانت ویزیتور از جذب تبلیغات تالار:</div>
+            <div className="font-mono-num text-xl font-black text-[#E11D48] mt-0.5">
+              ۲۵٪ نقدی از هر آگهی
+            </div>
+            <div className="text-[11px] text-emerald-800 font-bold">
+              ۳ تا ۱۶ میلیون تومان سود هر بنر تبلیغاتی
+            </div>
+          </div>
+        </div>
+
+        {/* 4 Official Advertising Tiers for Wedding Halls */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mt-6">
+          {HALL_AD_PACKAGES.map((pkg, idx) => (
+            <div
+              key={pkg.id}
+              onClick={() => setSelectedAdTierIndex(idx)}
+              className={`rounded-2xl p-5 border-2 transition cursor-pointer flex flex-col justify-between ${
+                selectedAdTierIndex === idx
+                  ? 'bg-gradient-to-b from-[#FFF0F3] to-white border-[#E11D48] shadow-lg scale-[1.01]'
+                  : 'bg-white border-[#D4AF37]/60 hover:border-[#E11D48]'
+              }`}
+            >
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="px-2.5 py-1 rounded-full bg-[#2C1E16] text-[#E6C258] text-[10px] font-extrabold">
+                    {pkg.badge}
+                  </span>
+                  <span className="text-xs font-bold text-[#9A7411]">{pkg.duration}</span>
+                </div>
+
+                <h3 className="font-black text-base text-[#2C1E16] leading-snug">{pkg.title}</h3>
+
+                <div className="p-2.5 rounded-xl bg-[#FAF7F2] border border-[#E6DFD3]">
+                  <div className="text-[11px] text-[#6E5A4F]">تعرفه رسمی درج آگهی تالار:</div>
+                  <div className="font-mono-num text-base font-black text-[#2C1E16]">
+                    {formatMoney(pkg.priceToman, currency, lang)}
+                  </div>
+                </div>
+
+                <ul className="space-y-1.5 text-xs text-[#6E5A4F] leading-relaxed">
+                  {pkg.features.map((feat, fIdx) => (
+                    <li key={fIdx} className="flex items-start gap-1.5">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                      <span>{feat}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="mt-4 pt-3 border-t border-[#E6DFD3] flex items-center justify-between text-xs">
+                <span className="font-bold text-[#E11D48]">سهم ۲۵٪ ویزیتور:</span>
+                <span className="font-mono-num font-black text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
+                  {formatMoney(pkg.visitor25ShareToman, currency, lang)}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Live Hall Advertisement Submission & Instant Preview */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-8">
+          <form
+            onSubmit={handlePublishLiveHallAd}
+            className="lg:col-span-5 p-5 rounded-2xl bg-[#2C1E16] text-[#FAF7F2] border-2 border-[#C59B27] space-y-3.5"
+          >
+            <div className="flex items-center gap-2 text-[#E6C258] font-black text-base">
+              <PartyPopper className="w-5 h-5 text-[#E11D48]" />
+              <span>ثبت و انتشار آنی آگهی تالار در صدر برنامه</span>
+            </div>
+            <p className="text-xs text-[#E6DFD3] leading-relaxed">
+              مشخصات تبلیغاتی تالار را وارد کنید تا بنر طلاکوب آن فوراً در ویترین زنده بالای صفحه و لیست زیر منتشر شود:
+            </p>
+
+            <div>
+              <label className="block text-xs text-[#E6C258] font-bold mb-1">
+                نام تالار یا باغ‌عمارت آگهی‌دهنده:
+              </label>
+              <input
+                type="text"
+                value={newAdHallName}
+                onChange={(e) => setNewAdHallName(e.target.value)}
+                placeholder={customBrand.hallName}
+                className="w-full px-3 py-2 rounded-xl bg-[#3E2723] border border-[#C59B27]/50 text-xs text-white"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-2.5">
+              <div>
+                <label className="block text-xs text-[#E6C258] font-bold mb-1">
+                  شهر و محدوده تالار:
+                </label>
+                <input
+                  type="text"
+                  value={newAdCity}
+                  onChange={(e) => setNewAdCity(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-[#3E2723] border border-[#C59B27]/50 text-xs text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-[#E6C258] font-bold mb-1">
+                  شماره واتساپ رزرواسیون:
+                </label>
+                <input
+                  type="tel"
+                  value={newAdWhatsapp}
+                  onChange={(e) => setNewAdWhatsapp(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-[#3E2723] border border-[#C59B27]/50 text-xs font-mono-num text-white"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs text-[#E6C258] font-bold mb-1">
+                تیتر آفر تبلیغاتی و هدیه ویژه تالار برای عروس و داماد:
+              </label>
+              <input
+                type="text"
+                value={newAdOffer}
+                onChange={(e) => setNewAdOffer(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl bg-[#3E2723] border border-[#C59B27]/50 text-xs text-white"
+              />
+            </div>
+
+            {adPublishedNotice && (
+              <div className="p-3 rounded-xl bg-emerald-950/90 border border-emerald-400 text-emerald-200 text-xs font-bold">
+                {adPublishedNotice}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-[#E11D48] via-[#F43F5E] to-[#D4AF37] text-white font-extrabold text-xs shadow-lg hover:brightness-105 transition cursor-pointer"
+            >
+              انتشار فوری بنر تبلیغاتی تالار در برنامه + محاسبه ۲۵٪ پورسانت
+            </button>
+          </form>
+
+          {/* Live Active Hall Advertisements Board */}
+          <div className="lg:col-span-7 p-5 rounded-2xl bg-white border border-[#D4AF37] space-y-4">
+            <div className="flex items-center justify-between flex-wrap gap-2 border-b border-[#E6DFD3] pb-3">
+              <div className="font-black text-base text-[#2C1E16] flex items-center gap-2">
+                <Crown className="w-5 h-5 text-[#E11D48]" />
+                <span>تابلوی زنده تبلیغات ویژه تالارهای عضو ({featuredHallAds.length} تالار فعال)</span>
+              </div>
+              <span className="text-xs text-[#6E5A4F]">
+                با کلیک روی هر آگهی، منوساز با نرخ و نام همان تالار بارگذاری می‌شود
+              </span>
+            </div>
+
+            <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+              {featuredHallAds.map((ad) => (
+                <div
+                  key={ad.id}
+                  className="p-4 rounded-2xl bg-gradient-to-r from-[#FFF0F3] via-[#FFFDF9] to-[#FEF9E7] border-2 border-[#D4AF37] flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                >
+                  <div className="space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="px-2.5 py-0.5 rounded-full bg-[#E11D48] text-white text-[10px] font-extrabold">
+                        {ad.tierBadge}
+                      </span>
+                      <h4 className="font-black text-sm text-[#2C1E16]">{ad.hallName}</h4>
+                      <span className="text-xs text-[#6E5A4F]">({ad.city})</span>
+                    </div>
+                    <p className="text-xs font-bold text-[#9A7411]">🎁 {ad.offerHeadline}</p>
+                    <div className="text-[11px] text-[#6E5A4F]">
+                      ظرفیت: {ad.capacity} • مدیریت: {ad.managerName}
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onUpdateBrand({
+                        hallName: ad.hallName,
+                        agencyType: 'باغ‌تالار و تشریفات VIP',
+                        managerName: ad.managerName,
+                        city: ad.city,
+                        whatsapp: ad.whatsapp,
+                        slogan: ad.offerHeadline,
+                        priceMultiplier: ad.priceMultiplier,
+                      });
+                      document.getElementById('builder')?.scrollIntoView({behavior: 'smooth'});
+                    }}
+                    className="px-4 py-2.5 rounded-xl bg-[#2C1E16] text-[#E6C258] border border-[#C59B27] font-extrabold text-xs hover:bg-[#3E2723] transition shrink-0 cursor-pointer"
+                  >
+                    ورود به منوساز این تالار
+                  </button>
+                </div>
+              ))}
             </div>
           </div>
         </div>

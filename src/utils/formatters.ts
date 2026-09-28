@@ -1,5 +1,14 @@
-import {CurrencyCode, LanguageCode, SayyadiCheckItem} from '../types';
+import {CurrencyCode, LanguageCode, LocalizedText, SayyadiCheckItem} from '../types';
 import {CURRENCIES} from '../data';
+
+export function pickText(textObj: LocalizedText | undefined, lang: LanguageCode): string {
+  if (!textObj) return '';
+  const val = textObj[lang];
+  if (val && val.trim()) return val;
+  if (lang === 'KU') return textObj.KU || textObj.FA;
+  if (lang === 'HY') return textObj.HY || textObj.EN;
+  return textObj.FA || textObj.EN || '';
+}
 
 export function formatMoney(
   amountToman: number,
@@ -12,20 +21,31 @@ export function formatMoney(
   const converted = amountToman * rate;
 
   const locale =
-    lang === 'FA'
+    lang === 'FA' || lang === 'KU'
       ? 'fa-IR'
       : lang === 'AR'
         ? 'ar-EG'
         : lang === 'TR'
           ? 'tr-TR'
-          : lang === 'RU'
-            ? 'ru-RU'
-            : 'en-US';
+          : lang === 'HY'
+            ? 'hy-AM'
+            : lang === 'RU'
+              ? 'ru-RU'
+              : 'en-US';
 
   if (currency === 'IRT') {
     const rounded = Math.round(converted);
     const formatted = rounded.toLocaleString(locale);
-    const unit = lang === 'FA' ? 'تومان' : lang === 'AR' ? 'تومان' : 'IRT';
+    const unit =
+      lang === 'FA'
+        ? 'تومان'
+        : lang === 'KU'
+          ? 'تەمەن'
+          : lang === 'AR'
+            ? 'تومان'
+            : lang === 'HY'
+              ? 'Թուման'
+              : 'IRT';
     return `${formatted} ${unit}`;
   }
 
@@ -44,15 +64,17 @@ export function formatMoney(
 
 export function formatNumberLocale(value: number, lang: LanguageCode): string {
   const locale =
-    lang === 'FA'
+    lang === 'FA' || lang === 'KU'
       ? 'fa-IR'
       : lang === 'AR'
         ? 'ar-EG'
         : lang === 'TR'
           ? 'tr-TR'
-          : lang === 'RU'
-            ? 'ru-RU'
-            : 'en-US';
+          : lang === 'HY'
+            ? 'hy-AM'
+            : lang === 'RU'
+              ? 'ru-RU'
+              : 'en-US';
   return Math.round(value).toLocaleString(locale);
 }
 

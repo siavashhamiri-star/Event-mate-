@@ -4,6 +4,12 @@ import {
   MenuItemOption,
   ServingStyleOption,
 } from '../types';
+import {
+  FLASH_DATES as _FLASH_DATES,
+  VENUE_PACKAGES as _VENUE_PACKAGES,
+  HALL_MARKETER_TIERS as _HALL_MARKETER_TIERS,
+  WHY_HALL_OWNERS_BUY_ITEMS as _WHY_HALL_OWNERS_BUY_ITEMS,
+} from './packages';
 
 export * from './packages';
 
@@ -14,10 +20,12 @@ export const LANGUAGES: Array<{
   dir: 'rtl' | 'ltr';
   voiceLang: string;
 }> = [
-  {code: 'FA', label: 'FA', nativeName: 'فارسی', dir: 'rtl', voiceLang: 'fa-IR'},
-  {code: 'EN', label: 'EN', nativeName: 'English', dir: 'ltr', voiceLang: 'en-US'},
-  {code: 'AR', label: 'AR', nativeName: 'العربية', dir: 'rtl', voiceLang: 'ar-SA'},
-  {code: 'TR', label: 'TR', nativeName: 'Türkçe', dir: 'ltr', voiceLang: 'tr-TR'},
+  {code: 'FA', label: 'فارسی', nativeName: 'فارسی', dir: 'rtl', voiceLang: 'fa-IR'},
+  {code: 'EN', label: 'English', nativeName: 'English', dir: 'ltr', voiceLang: 'en-US'},
+  {code: 'AR', label: 'العربية', nativeName: 'العربية', dir: 'rtl', voiceLang: 'ar-SA'},
+  {code: 'TR', label: 'Türkçe', nativeName: 'Türkçe', dir: 'ltr', voiceLang: 'tr-TR'},
+  {code: 'KU', label: 'کوردی', nativeName: 'کوردی', dir: 'rtl', voiceLang: 'ckb-IQ'},
+  {code: 'HY', label: 'Հայերեն', nativeName: 'Հայերեն', dir: 'ltr', voiceLang: 'hy-AM'},
   {code: 'RU', label: 'RU', nativeName: 'Русский', dir: 'ltr', voiceLang: 'ru-RU'},
 ];
 
@@ -30,31 +38,71 @@ export const CURRENCIES: Array<{
   {
     code: 'IRT',
     symbol: 'تومان',
-    label: {FA: 'تومان ایران', EN: 'Iranian Toman', AR: 'تومان إيراني', TR: 'İran Tomanı', RU: 'Иранский туман'},
+    label: {
+      FA: 'تومان ایران',
+      EN: 'Iranian Toman',
+      AR: 'تومان إيراني',
+      TR: 'İran Tomanı',
+      KU: 'تەمەنی ئێرانی',
+      HY: 'Իրանական թուման',
+      RU: 'Иранский туман',
+    },
     rateFromToman: 1,
   },
   {
     code: 'USD',
     symbol: '$',
-    label: {FA: 'دلار آمریکا (USD)', EN: 'US Dollar (USD)', AR: 'دولار أمريكي', TR: 'ABD Doları', RU: 'Доллар США'},
+    label: {
+      FA: 'دلار آمریکا (USD)',
+      EN: 'US Dollar (USD)',
+      AR: 'دولار أمريكي',
+      TR: 'ABD Doları',
+      KU: 'دۆلاری ئەمریکی',
+      HY: 'ԱՄՆ դոլար (USD)',
+      RU: 'Доллар США',
+    },
     rateFromToman: 1 / 62000,
   },
   {
     code: 'AED',
     symbol: 'AED',
-    label: {FA: 'درهم امارات (AED)', EN: 'UAE Dirham (AED)', AR: 'درهم إماراتي', TR: 'BAE Dirhemi', RU: 'Дирхам ОАЭ'},
+    label: {
+      FA: 'درهم امارات (AED)',
+      EN: 'UAE Dirham (AED)',
+      AR: 'درهم إماراتي',
+      TR: 'BAE Dirhemi',
+      KU: 'درهەمی ئیمارات',
+      HY: 'ԱՄԷ դիրհամ (AED)',
+      RU: 'Дирхам ОАЭ',
+    },
     rateFromToman: 1 / 16900,
   },
   {
     code: 'TRY',
     symbol: '₺',
-    label: {FA: 'لیر ترکیه (TRY)', EN: 'Turkish Lira (TRY)', AR: 'ليرة تركية', TR: 'Türk Lirası', RU: 'Турецкая лира'},
+    label: {
+      FA: 'لیر ترکیه (TRY)',
+      EN: 'Turkish Lira (TRY)',
+      AR: 'ليرة تركية',
+      TR: 'Türk Lirası',
+      KU: 'لیرەی تورکی',
+      HY: 'Թուրքական լիրա (TRY)',
+      RU: 'Турецкая лира',
+    },
     rateFromToman: 1 / 1820,
   },
   {
     code: 'RUB',
     symbol: '₽',
-    label: {FA: 'روبل روسیه (RUB)', EN: 'Russian Ruble (RUB)', AR: 'روبل روسي', TR: 'Rus Rublesi', RU: 'Российский рубль'},
+    label: {
+      FA: 'روبل روسیه (RUB)',
+      EN: 'Russian Ruble (RUB)',
+      AR: 'روبل روسي',
+      TR: 'Rus Rublesi',
+      KU: 'ڕۆبڵی ڕووسی',
+      HY: 'Ռուսական ռուբլի (RUB)',
+      RU: 'Российский рубль',
+    },
     rateFromToman: 1 / 670,
   },
 ];
@@ -284,6 +332,96 @@ export const UI_TEXT: Record<LanguageCode, Record<string, string>> = {
     applyPackageBtn: 'Загрузить в калькулятор',
     marketerTitle: 'Клуб маркетологов и партнеров по привлечению банкетных залов',
     marketerSub: 'Официальные условия партнерской комиссии (до 35%) за подключение владельцев свадебных залов и ресторанов к EventMate VIP',
+  },
+  KU: {
+    appTitle: 'EventMate VIP | ئیڤێنت مەیت شانشینی',
+    appSubtitle: 'ئیکۆسیستەمی ئافراندن | شاری نوێی نیومێتاڤێرسیتی جیهان | هێزی ستەیجی FBNM',
+    heroBadge: 'سیستەمی زیرەکی داڕشتنی مێنۆی زەماوەند، هەژمارکەری دەستبەجێی تێچوو و قیستی چەکی سەیادی و حیجزکردنی هۆڵی ئاهەنگ',
+    heroTitle: 'ئەندازیاری شاهانەی ئاهەنگ و زەماوەند، مێنۆسازی زیندوو و هەژمارکەری قیستی چەکی سەیادی',
+    heroDesc:
+      'ژمارەی میوانەکان (٥٠ تا ١٠٠٠ کەس)، شێوازی میوانداری، خواردنی سەرەکی و ڕازاندنەوە هەڵبژێرە؛ دەستبەجێ تێچووی هەر کەسێک، کۆی گرێبەست، پێشەکی و خشتەی چەکەکان وەربگرە و بۆ واتسئەپ یان جیمەیڵی بەڕێوەبەری هۆڵی بنێرە.',
+    ctaStartBuilder: 'دەستپێکردنی مێنۆساز و هەژمارکەری زیندوو',
+    ctaMarketerClub: 'پشک و قازانجی بازاڕکارانی هۆڵەکان (٢٥٪ تا ٣٥٪)',
+    ctaInstallPwa: 'دامەزراندنی ١-کلیکی بەرنامە (PWA)',
+    ctaAndroidBuild: 'دروستکردنی خۆکاری APK و AAB بۆ مایکێت و بازاڕ',
+    ctaAccessibility: 'دەستڕاگەیشتنی خاوەن پێداویستی تایبەت و ADHD',
+    navBuilder: 'مێنۆساز و قیستی چەک',
+    navFlashDates: 'شەوە بەتاڵە داشکێنراوەکان',
+    navPackages: '١٠ پاکێجی هۆڵ و کەترینگ',
+    navAnalytics: 'ئامار و ستۆری سازی HD',
+    navMarketers: 'قازانجی ٢٥٪ی بازاڕکاران',
+    navAndroidCi: 'دەرچووی APK/AAB و پاراستنی API',
+    guestCountLabel: 'ژمارەی میوانەکانی ئاهەنگ (٥٠ تا ١٠٠٠ میوان)',
+    servingStyleLabel: 'هەڵبژاردنی شێوازی میوانداری و پێشکەشکردن',
+    catMain: 'خواردنە سەرەکییە شاهانەکان',
+    catAppetizer: 'پێشخواردن و زەڵاتە باری گەرم و سارد',
+    catFruitPastry: 'میوەی هەڵبژاردە، شیرینی و خواردنەوەکان',
+    catCeremonial: 'گوڵڕازاندنەوە، ڕووناکی، مۆسیقا و یاری ئاگرین',
+    invoiceTitle: 'پێش‌فاکتۆری فەرمی و خشتەی قیستی چەکی سەیادی',
+    perGuestCost: 'تێچووی تەواوکراوی هەر کەسێک',
+    totalContractCost: 'کۆی گشتی گرێبەستی ئاهەنگ',
+    downPaymentLabel: 'بڕی پێشەکی کاش',
+    remainingInstallment: 'ماوەی قابیلی قیست بە چەکی سەیادی',
+    eachCheckAmount: 'بڕی هەر چەکێکی سەیادی',
+    installmentMonthsLabel: 'ژمارەی مانگەکانی قیست (چەکی سەیادی)',
+    downPaymentPercentLabel: 'ڕێژەی پێشەکی کاش لە کاتی گرێبەست',
+    speakInvoiceBtn: 'خوێندنەوەی دەنگی پێش‌فاکتۆر (بۆ نابینایان و کەمبینایان)',
+    stopSpeakBtn: 'ڕاگرتنی خوێندنەوەی دەنگی',
+    sendWhatsappBtn: 'ناردنی فەرمی پێش‌فاکتۆر بۆ واتسئەپی بەڕێوەبەری هۆڵ',
+    sendGmailBtn: 'ناردنی فەرمی پێش‌فاکتۆر بە جیمەیڵ (Gmail API)',
+    saveServerBtn: 'تۆمارکردن لە سێرڤەر و وەرگرتنی کۆدی بەدواداچوون',
+    flashDatesTitle: 'ڕۆژژمێری زیرەکی شەوە بەتاڵەکانی هۆڵ بە داشکاندنی تایبەت (Flash Dates)',
+    flashDatesSub: 'بە هەڵبژاردنی هەر یەک لەم شەوانە، داشکاندنی تایبەت ڕاستەوخۆ لەسەر فاکتۆر و قیستەکانت جێبەجێ دەبێت.',
+    packagesTitle: 'پێشانگای ١٠ پاکێج و مێنۆی ڕاستەقینەی هۆڵ، باخچە-هۆڵ و کەترینگی زەماوەند',
+    packagesSub: 'کلیک لەسەر هەر پاکێجێک بکە تا مێنۆ و ژمارەی میوانەکان ڕاستەوخۆ بچێتە ناو هەژمارکەری زیرەک.',
+    applyPackageBtn: 'بارکردن لەناو مێنۆساز و هەژمارکردن',
+    marketerTitle: 'یانەی بازاڕکاران و نوێنەرانی ناساندن بە خاوەن هۆڵەکان (٢٥٪ قازانجی فرۆش)',
+    marketerSub: 'مەرجی فەرمی هاوکاری و ٢٥٪ قازانجی فرۆشتنی بەرنامەی EventMate VIP بە بەڕێوەبەرانی هۆڵەکانی زەماوەند',
+  },
+  HY: {
+    appTitle: 'EventMate VIP | Արքայական Հանդիսությունների Համակարգ',
+    appSubtitle: 'Արարման Էկոհամակարգ | Նյու Մետավերսիթի Համաշխարհային Քաղաք | FBNM Բեմի Հզորություն',
+    heroBadge: 'Հարսանեկան մենյուի կենդանի կառուցիչ, արժեքի և Սայադի չեկերի ապառիկի ակնթարթային հաշվիչ, սրահների ամրագրում',
+    heroTitle: 'Հարսանեկան Հանդիսությունների Արքայական Նախագծում, Կենդանի Մենյու և Ապառիկի Հաշվիչ',
+    heroDesc:
+      'Ընտրեք հյուրերի քանակը (50–1000), հյուրասիրության ոճը, հիմնական ուտեստները և ձևավորումը. ակնթարթորեն հաշվարկեք մեկ անձի արժեքը, պայմանագրի ընդհանուր գումարը և չեկերի ժամանակացույցը և ուղարկեք WhatsApp-ով կամ Gmail-ով։',
+    ctaStartBuilder: 'Սկսել Մենյուի Կենդանի Հաշվիչը',
+    ctaMarketerClub: 'Սրահների Մարքեթոլոգների Միջնորդավճար (25% - 35%)',
+    ctaInstallPwa: 'Տեղադրել Հավելվածը 1 Հպումով (PWA)',
+    ctaAndroidBuild: 'APK և AAB Ավտոմատ Կառուցում (GitHub, Myket, Bazaar)',
+    ctaAccessibility: 'Հասանելիություն Հաշմանդամների Համար և ADHD Կենտրոնացում',
+    navBuilder: 'Մենյու և Չեկերի Հաշվիչ',
+    navFlashDates: 'Զեղչված Ազատ Օրեր',
+    navPackages: '10 Արքայական Փաթեթներ',
+    navAnalytics: 'Վերլուծություն և HD Սթորի',
+    navMarketers: 'Մարքեթոլոգների 25% Շահույթ',
+    navAndroidCi: 'APK/AAB և Անվտանգ API',
+    guestCountLabel: 'Հյուրերի Քանակը (50-ից 1000 Հյուր)',
+    servingStyleLabel: 'Ընտրեք Հյուրասիրության և Սպասարկման Ոճը',
+    catMain: 'Արքայական Հիմնական Ուտեստներ',
+    catAppetizer: 'Նախուտեստներ և Աղցանների Բար',
+    catFruitPastry: 'Ընտիր Մրգեր, Ֆրանսիական Խմորեղեն և Ըմպելիքներ',
+    catCeremonial: 'Ծաղկային Դիզայն, Կենդանի Երաժշտություն և Հրավառություն',
+    invoiceTitle: 'Պաշտոնական Նախահաշիվ և Սայադի Չեկերի Ժամանակացույց',
+    perGuestCost: 'Մեկ Հյուրի Վերջնական Արժեքը',
+    totalContractCost: 'Պայմանագրի Ընդհանուր Գումարը',
+    downPaymentLabel: 'Կանխիկ Կանխավճար',
+    remainingInstallment: 'Մնացորդը Չեկերով Ապառիկի Համար',
+    eachCheckAmount: 'Յուրաքանչյուր Չեկի Գումարը',
+    installmentMonthsLabel: 'Ապառիկի Ամիսների Քանակը (Սայադի Չեկեր)',
+    downPaymentPercentLabel: 'Կանխավճարի Տոկոսը (%)',
+    speakInvoiceBtn: 'Նախահաշվի Ձայնային Ընթերցում (Տեսողության Խնդիրներ Ունեցողների Համար)',
+    stopSpeakBtn: 'Կանգնեցնել Ձայնային Ընթերցումը',
+    sendWhatsappBtn: 'Ուղարկել Նախահաշիվը Սրահի Տնօրենի WhatsApp-ին',
+    sendGmailBtn: 'Ուղարկել Պաշտոնական Նախահաշիվ Gmail API-ով',
+    saveServerBtn: 'Պահպանել Պայմանագիրը և Ստանալ Կոդ',
+    flashDatesTitle: 'Ազատ Օրերի Խելացի Օրացույց Հատուկ Զեղչերով (Flash Dates)',
+    flashDatesSub: 'Ընտրեք ազատ օրը՝ զեղչը ձեր հաշվին և ապառիկ չեկերին անմիջապես կիրառելու համար։',
+    packagesTitle: '10 Հարսանյաց Սրահների, Այգիների և Քեյթերինգի Իրական Փաթեթներ',
+    packagesSub: 'Սեղմեք ցանկացած փաթեթի վրա՝ մենյուն ուղիղ հաշվիչի մեջ բեռնելու համար։',
+    applyPackageBtn: 'Բեռնել Հաշվիչի Մեջ',
+    marketerTitle: 'Սրահների Մարքեթոլոգների և Գործընկերների Ակումբ (25% Մաքուր Շահույթ)',
+    marketerSub: 'EventMate VIP համակարգը հանդիսությունների սրահներին ներկայացնելու պաշտոնական պայմաններ՝ վաճառքի 25% շահույթով',
   },
 };
 
@@ -669,3 +807,49 @@ export const MENU_ITEMS: MenuItemOption[] = [
     caloriesOrSpec: '۴ مرحله آتش‌بازی + فیلم‌برداری',
   },
 ];
+
+function enrichLocalizedTree(node: unknown): void {
+  if (!node || typeof node !== 'object') return;
+  if (Array.isArray(node)) {
+    node.forEach(enrichLocalizedTree);
+    return;
+  }
+  const rec = node as Record<string, unknown>;
+  if (typeof rec.FA === 'string' && typeof rec.EN === 'string') {
+    if (!rec.KU) {
+      rec.KU = rec.FA;
+    }
+    if (!rec.HY) {
+      rec.HY = rec.EN;
+    }
+    return;
+  }
+  Object.values(rec).forEach(enrichLocalizedTree);
+}
+
+// Explicit authentic Kurdish (KU) & Armenian (HY) translations for core Serving Styles & Signature Dishes
+SERVING_STYLES[0].title.KU = 'تەک‌پرسی کلاسیکی شاهانە (VIP Single Plate)';
+SERVING_STYLES[0].title.HY = 'Դասական Արքայական Անհատական Մատուցում (Single Plate)';
+SERVING_STYLES[1].title.KU = 'دیس‌پرسی شاهانەی گەرمکەرەوەدار (Royal Platter)';
+SERVING_STYLES[1].title.HY = 'Արքայական Տաք Սկուտեղներով Մատուցում (Royal Platter)';
+SERVING_STYLES[2].title.KU = 'بوفێی کراوەی ئیمپراتۆری ٢٤ عەیار (Imperial Buffet VIP)';
+SERVING_STYLES[2].title.HY = '24K Կայսերական Բաց Բուֆետ (Imperial Buffet VIP)';
+
+MENU_ITEMS[0].name.KU = 'باقلاپڵاو بە گۆشتی مل و ماهیچەی بەرخ لەگەڵ زەعفەران';
+MENU_ITEMS[0].name.HY = 'Զաֆրանով և կանաչիով փլավ՝ գառան շոգեխաշած վզիկով և սրունքով';
+MENU_ITEMS[1].name.KU = 'چڵەوکەبابی سوڵتانی (بەرگی ڕاستەی بەرخ + کوبیدەی زەعفەرانی)';
+MENU_ITEMS[1].name.HY = 'Արքայական Սոլթանի Քյաբաբ (Գառան ֆիլե Բարգ + Զաֆրանով Քուբիդե)';
+MENU_ITEMS[2].name.KU = 'شیشلیکی تایبەتی شاندیز (٦ پەراسوو لەسەر خەڵووز)';
+MENU_ITEMS[2].name.HY = 'Շանդիզի Ֆիրմային Չալաղաջ (6 գառան կողոսկր ածխի վրա)';
+MENU_ITEMS[3].name.KU = 'مورەسەع پڵاوی دەرباری بە فیلێی مریشک و فستق و بادەم';
+MENU_ITEMS[3].name.HY = 'Արքայական զարդարված փլավ հավի ֆիլեով, պիստակով և նուշով';
+MENU_ITEMS[4].name.KU = 'فیلێی سالمۆنی نەرویژی برژاو و ڕۆبیانی شاهانە بە سۆسی تارتار';
+MENU_ITEMS[4].name.HY = 'Նորվեգական սաղմոն գրիլ և արքայական ծովախեցգետին թարթար սոուսով';
+
+enrichLocalizedTree(SERVING_STYLES);
+enrichLocalizedTree(MENU_ITEMS);
+enrichLocalizedTree(_FLASH_DATES);
+enrichLocalizedTree(_VENUE_PACKAGES);
+enrichLocalizedTree(_HALL_MARKETER_TIERS);
+enrichLocalizedTree(_WHY_HALL_OWNERS_BUY_ITEMS);
+
