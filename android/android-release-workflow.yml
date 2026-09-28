@@ -67,10 +67,11 @@ jobs:
               -dname "CN=EventMate VIP, OU=FBNM Stage, O=New Metaversity, L=Tehran, S=Tehran, C=IR"
           fi
 
-      - name: Build Signed Release APK & Play Store AAB via Gradle
+      - name: Build Signed Release APK & Play Store AAB via Gradle (Automated Env Injection)
         working-directory: ./android
         env:
-          EVENTMATE_API_BASE_URL: ${{ secrets.EVENTMATE_API_BASE_URL || 'https://eventmate-vip.fbnm.stage' }}
+          EVENTMATE_API_BASE_URL: ${{ secrets.EVENTMATE_API_BASE_URL || 'https://ais-pre-omeitfmbn6thcwrha6aqzc-453570687245.europe-west2.run.app' }}
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID || 'auto-resolved-via-server-proxy' }}
           KEYSTORE_FILE: "../eventmate-release.keystore"
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD || 'EventMateVIP2026' }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS || 'eventmate_vip' }}
@@ -104,8 +105,8 @@ jobs:
             - 📦 **فایل نصبی مستقیم اندروید (Signed APK V1/V2/V3):** `EventMate-VIP-v1.0.0.apk`
             - 🏪 **باندل رسمی گوگل‌پلی و کافه‌بازار (Signed AAB):** `EventMate-VIP-v1.0.0.aab`
             - 🔐 **فایل هش اعتبارسنجی امضا:** `SHA256SUMS.txt`
-            - 🛡️ **امنیت کلیدهای API:** ایزوله در سرور پراکسی (`server.ts`) بدون افشای کلید در باینری کلاینت.
-            - ✨ منوساز زنده، محاسبه‌گر اقساط چک صیادی، تقویم شب‌های خالی تالار، استوری‌ساز HD، دسترس‌پذیری کم‌بینایان و ADHD، و باشگاه بازاریابان تالارها.
+            - 🛡️ **اتوماسیون ۱۰۰٪ امن کلیدهای API:** ایزوله در سرور پراکسی (`server.ts`) بدون افشای کلید در باینری کلاینت.
+            - ✨ منوساز زنده، شخصی‌سازی White-Label تالارها، محاسبه‌گر اقساط چک صیادی، تقویم شب‌های خالی، استوری‌ساز HD، دسترس‌پذیری کم‌بینایان و ADHD، و باشگاه ویزیتورها با ۲۵٪ سهم سود فروش.
           files: |
             release-artifacts/EventMate-VIP-v1.0.0.apk
             release-artifacts/EventMate-VIP-v1.0.0.aab

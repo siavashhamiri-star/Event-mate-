@@ -46,10 +46,9 @@ export const MarketerAndAndroidHub: React.FC<MarketerAndAndroidHubProps> = ({
   const [registerMsg, setRegisterMsg] = useState<string | null>(null);
   const [registering, setRegistering] = useState(false);
 
-  // GitHub Direct Push State
-  const [githubToken, setGithubToken] = useState('');
-  const [repoOwner, setRepoOwner] = useState('');
-  const [repoName, setRepoName] = useState('eventmate-vip');
+  // GitHub Direct Push State (100% Server-Side Automated Token Vault)
+  const [repoOwner, setRepoOwner] = useState('eventmate-vip');
+  const [repoName, setRepoName] = useState('eventmate-vip-android');
   const [releaseTag, setReleaseTag] = useState('v1.0.0');
   const [pushLoading, setPushLoading] = useState(false);
   const [pushResult, setPushResult] = useState<{
@@ -157,7 +156,6 @@ export const MarketerAndAndroidHub: React.FC<MarketerAndAndroidHubProps> = ({
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
-          githubToken,
           repoOwner,
           repoName,
           branch: 'main',
@@ -504,14 +502,14 @@ export const MarketerAndAndroidHub: React.FC<MarketerAndAndroidHubProps> = ({
             </span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label className="block text-xs font-bold text-[#2C1E16] mb-1">
-                نام کاربری یا سازمان گیت‌هاب (Owner):
+                نام سازمان یا حساب مخزن (Owner):
               </label>
               <input
                 type="text"
-                placeholder="مثلاً: siavashhamiri"
+                placeholder="eventmate-vip"
                 value={repoOwner}
                 onChange={(e) => setRepoOwner(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl bg-white border border-[#D4AF37]/50 text-xs font-mono-num"
@@ -519,11 +517,11 @@ export const MarketerAndAndroidHub: React.FC<MarketerAndAndroidHubProps> = ({
             </div>
             <div>
               <label className="block text-xs font-bold text-[#2C1E16] mb-1">
-                نام مخزن گیت‌هاب (Repository):
+                نام مخزن مقصد (Repository):
               </label>
               <input
                 type="text"
-                placeholder="eventmate-vip"
+                placeholder="eventmate-vip-android"
                 value={repoName}
                 onChange={(e) => setRepoName(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl bg-white border border-[#D4AF37]/50 text-xs font-mono-num"
@@ -537,18 +535,6 @@ export const MarketerAndAndroidHub: React.FC<MarketerAndAndroidHubProps> = ({
                 type="text"
                 value={releaseTag}
                 onChange={(e) => setReleaseTag(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-white border border-[#D4AF37]/50 text-xs font-mono-num"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-[#2C1E16] mb-1">
-                توکن دسترسی گیت‌هاب (PAT - اختیاری):
-              </label>
-              <input
-                type="password"
-                placeholder="ghp_xxxxxxxxxxxx"
-                value={githubToken}
-                onChange={(e) => setGithubToken(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl bg-white border border-[#D4AF37]/50 text-xs font-mono-num"
               />
             </div>

@@ -19,11 +19,16 @@ import android.widget.Toast;
  * EventMate VIP | ایونت‌مِیت
  * اکوسیستم آفرینش | شهر جدید نیومتاورسیتی جهان | توان استیج FBNM
  * Package: com.eventmate.vip
+ *
+ * SECURITY ARCHITECTURE:
+ * Zero private API keys are stored in the Android binary.
+ * All endpoints are automatically injected via Gradle BuildConfig from environment variables
+ * and communicate strictly through the isolated server proxy (`server.ts`).
  */
 public class MainActivity extends Activity {
 
     private WebView webView;
-    private static final String APP_URL = "https://ais-pre-omeitfmbn6thcwrha6aqzc-453570687245.europe-west2.run.app";
+    private static final String APP_URL = BuildConfig.API_BASE_URL;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -38,7 +43,7 @@ public class MainActivity extends Activity {
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
         settings.setDatabaseEnabled(true);
-        settings.setAllowFileAccess(true);
+        settings.setAllowFileAccess(false);
         settings.setLoadWithOverviewMode(true);
         settings.setUseWideViewPort(true);
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
@@ -98,6 +103,21 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public String getPackageName() {
             return "com.eventmate.vip";
+        }
+
+        @JavascriptInterface
+        public String getServerProxyConciergeUrl() {
+            return BuildConfig.SERVER_PROXY_CONCIERGE;
+        }
+
+        @JavascriptInterface
+        public String getServerProxyRatesUrl() {
+            return BuildConfig.SERVER_PROXY_RATES;
+        }
+
+        @JavascriptInterface
+        public String getServerProxyOAuthConfigUrl() {
+            return BuildConfig.SERVER_PROXY_OAUTH_CONFIG;
         }
     }
 
