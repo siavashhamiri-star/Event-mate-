@@ -39,6 +39,7 @@ import {
 import {
   CURRENCIES,
   FLASH_DATES,
+  HALL_BRAND_PRESETS,
   LANGUAGES,
   MENU_ITEMS,
   SERVING_STYLES,
@@ -54,6 +55,10 @@ import {AccessibilityPanel} from './components/AccessibilityPanel';
 import {GmailInvoiceModal} from './components/GmailInvoiceModal';
 import {StoryMakerAnalytics} from './components/StoryMakerAnalytics';
 import {MarketerAndAndroidHub} from './components/MarketerAndAndroidHub';
+import {
+  CustomHallBrand,
+  WhiteLabelAndVisitorSuite,
+} from './components/WhiteLabelAndVisitorSuite';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -99,10 +104,34 @@ export default function App() {
     FLASH_DATES[0],
   );
 
+  // White-Label Custom Hall / Agency Branding State (Customizable from the very start or via URL)
+  const [customBrand, setCustomBrand] = useState<CustomHallBrand>(() => {
+    const params = new URLSearchParams(window.location.search);
+    const defaultPreset = HALL_BRAND_PRESETS[0];
+    return {
+      hallName: params.get('hall') || defaultPreset.hallName,
+      agencyType: defaultPreset.agencyType,
+      managerName: params.get('manager') || defaultPreset.managerName,
+      city: params.get('city') || defaultPreset.city,
+      whatsapp: params.get('phone') || defaultPreset.whatsapp,
+      slogan: defaultPreset.slogan,
+      priceMultiplier: defaultPreset.priceMultiplier,
+    };
+  });
+
   // Customer & Contract Details
   const [customerName, setCustomerName] = useState('امیرحسین و سارا (عروس و داماد VIP)');
   const [customerPhone, setCustomerPhone] = useState('09123456789');
-  const [hallManagerWhatsapp, setHallManagerWhatsapp] = useState('989123456789');
+  const [hallManagerWhatsapp, setHallManagerWhatsapp] = useState(
+    () => new URLSearchParams(window.location.search).get('phone') || '989123456789',
+  );
+
+  const handleUpdateBrand = (nextBrand: CustomHallBrand) => {
+    setCustomBrand(nextBrand);
+    if (nextBrand.whatsapp) {
+      setHallManagerWhatsapp(nextBrand.whatsapp);
+    }
+  };
   const [savedTrackingCode, setSavedTrackingCode] = useState<string | null>(null);
   const [savingContract, setSavingContract] = useState(false);
   const [celebrationBanner, setCelebrationBanner] = useState<string | null>(null);
@@ -181,10 +210,13 @@ export default function App() {
       .reduce((acc, item) => acc + item.priceToman, 0);
 
     const styledFoodPerGuest = Math.round(
-      perGuestFoodSum * servingStyle.multiplier + servingStyle.serviceFeePerGuestToman,
+      (perGuestFoodSum * servingStyle.multiplier + servingStyle.serviceFeePerGuestToman) *
+        customBrand.priceMultiplier,
     );
 
-    const rawTotalToman = styledFoodPerGuest * guestCount + fixedCeremonialSum;
+    const rawTotalToman =
+      styledFoodPerGuest * guestCount +
+      Math.round(fixedCeremonialSum * customBrand.priceMultiplier);
     const discountPercent = selectedFlashDate ? selectedFlashDate.discountPercent : 0;
     const discountAmountToman = Math.round((rawTotalToman * discountPercent) / 100);
     const finalTotalToman = Math.max(0, rawTotalToman - discountAmountToman);
@@ -215,6 +247,7 @@ export default function App() {
     selectedFlashDate,
     downPaymentPercent,
     installmentMonths,
+    customBrand.priceMultiplier,
   ]);
 
   const toggleMenuItem = (id: string) => {
@@ -283,8 +316,9 @@ export default function App() {
       )
       .join('\n');
 
-    const message = `👑 *پیش‌فاکتور رسمی جشن عروسی و تشریفات — EventMate VIP | ایونت‌مِیت*
-🌸 *اکوسیستم آفرینش | شهر جدید نیومتاورسیتی جهان | توان استیج FBNM*
+    const message = `👑 *پیش‌فاکتور رسمی جشن عروسی و تشریفات — ${customBrand.hallName}*
+🌸 *مدیریت محترم: ${customBrand.managerName} (${customBrand.city})*
+🏛️ *${customBrand.slogan}*
 ────────────────────
 👰🤵 *میزبان:* ${customerName}
 📞 *تلفن تماس:* ${customerPhone}
@@ -464,14 +498,14 @@ ${checkLines}`;
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-lg sm:text-xl font-black text-[#2C1E16] tracking-tight">
-                  {t.appTitle}
+                  {customBrand.hallName}
                 </span>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-100 text-[#E11D48] border border-rose-200">
-                  جشن و تالار VIP
+                  شخصی‌سازی‌شده VIP
                 </span>
               </div>
               <p className="text-[11px] text-[#6E5A4F] font-medium">
-                منوساز زنده • محاسبه‌گر اقساط صیادی • پورسانت بازاریابان تالارها
+                {customBrand.slogan}
               </p>
             </div>
           </a>
@@ -503,10 +537,16 @@ ${checkLines}`;
               📸 {t.navAnalytics}
             </a>
             <a
-              href="#marketers"
+              href="#why-buy"
+              className="px-3 py-2 rounded-xl bg-amber-50 text-[#9A7411] border border-amber-200 hover:bg-amber-100 transition"
+            >
+              🏛️ چرا تالاردار بخرد؟
+            </a>
+            <a
+              href="#invitation-letter"
               className="px-3 py-2 rounded-xl bg-rose-50 text-[#E11D48] border border-rose-200 hover:bg-rose-100 transition"
             >
-              💎 {t.navMarketers}
+              💌 دعوت‌نامه + ۲۵٪ سود ویزیتور
             </a>
             <a
               href="#android-ci"
@@ -554,6 +594,15 @@ ${checkLines}`;
 
       {/* MAIN CONTENT CONTAINER */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6">
+        {/* 2.5. INSTANT WHITE-LABEL CUSTOMIZATION BAR FOR HALLS & WEDDING AGENCIES */}
+        <WhiteLabelAndVisitorSuite
+          lang={lang}
+          currency={currency}
+          customBrand={customBrand}
+          onUpdateBrand={handleUpdateBrand}
+          mode="top-customizer"
+        />
+
         {/* 3. JOYFUL, FESTIVE WEDDING CELEBRATION HERO SECTION */}
         <section className="my-6 rounded-[32px] wedding-festive-header border-2 border-[#D4AF37]/60 shadow-2xl overflow-hidden relative p-6 sm:p-10">
           {/* Decorative Festive Floating Badges */}
@@ -593,9 +642,9 @@ ${checkLines}`;
                   </div>
                 </div>
                 <div className="p-3 rounded-2xl bg-white/90 border border-emerald-200 shadow-sm">
-                  <div className="text-xs text-[#6E5A4F] font-bold">پورسانت بازاریابان</div>
+                  <div className="text-xs text-[#6E5A4F] font-bold">سود فروش ویزیتورها</div>
                   <div className="font-mono-num text-lg font-black text-emerald-700 mt-0.5">
-                    ۳۵٪ نقدی + تمدید
+                    ۲۵٪ سود خالص فروش
                   </div>
                 </div>
                 <div className="p-3 rounded-2xl bg-white/90 border border-amber-200 shadow-sm">
@@ -1278,6 +1327,15 @@ ${checkLines}`;
           selectedNames={selectedItems.map((i) => i.name[lang])}
         />
 
+        {/* 8.5. WHY HALL OWNERS MUST BUY + 25% VISITOR PROFIT MECHANISM & INVITATION LETTER */}
+        <WhiteLabelAndVisitorSuite
+          lang={lang}
+          currency={currency}
+          customBrand={customBrand}
+          onUpdateBrand={handleUpdateBrand}
+          mode="full-pitch-and-invitation"
+        />
+
         {/* 9. B2B HALL MARKETER COMMISSION CLUB & SECURE ANDROID APK/AAB CI ENGINE */}
         <MarketerAndAndroidHub lang={lang} currency={currency} />
       </main>
@@ -1386,7 +1444,7 @@ ${checkLines}`;
                   شامل منوساز اختصاصی با لوگوی تالار شما، تقویم شب‌های خالی (Flash Dates)، محاسبه‌گر چک صیادی، استوری‌ساز HD و ارسال مستقیم پیش‌فاکتور به واتساپ و جیمیل.
                 </p>
                 <div className="mt-2 font-bold text-emerald-800 text-xs">
-                  💎 پورسانت بازاریاب معرف تالار: ۳۵٪ نقدی آنی (۱۶,۸۰۰,۰۰۰ تومان) + ۱۰٪ تمدید سالانه
+                  💎 سهم سود ویزیتور / بازاریاب معرف تالار: ۲۵٪ نقدی آنی (۱۲,۰۰۰,۰۰۰ تومان) + ۱۰٪ تمدید سالانه
                 </div>
               </div>
               <div className="p-4 rounded-2xl bg-[#FEF9E7] border border-[#D4AF37]">
@@ -1397,7 +1455,7 @@ ${checkLines}`;
                   پشتیبانی از ۵ زبان و ۵ ارز زنده، اپلیکیشن اختصاصی اندروید و اتصال مستقیم به CRM مجموعه.
                 </p>
                 <div className="mt-2 font-bold text-emerald-800 text-xs">
-                  💎 پورسانت بازاریاب معرف هتل: ۳۰٪ نقدی آنی (۲۸,۸۰۰,۰۰۰ تومان) + ۱۲٪ تمدید سالانه
+                  💎 سهم سود ویزیتور / بازاریاب معرف هتل: ۲۵٪ نقدی آنی (۲۴,۰۰۰,۰۰۰ تومان) + ۱۲٪ تمدید سالانه
                 </div>
               </div>
             </div>

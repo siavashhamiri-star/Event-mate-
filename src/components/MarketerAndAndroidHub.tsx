@@ -61,9 +61,40 @@ export const MarketerAndAndroidHub: React.FC<MarketerAndAndroidHubProps> = ({
     error?: string;
   } | null>(null);
 
-  // Commission Math
-  const hallSaaSCommissionToman = hallsPerMonth * 16800000; // 35% of 48M Toman
-  const hotelEnterpriseCommissionToman = hotelChainsPerMonth * 28800000; // 30% of 96M Toman
+  // Live Gradle & Workflow Code Inspector State
+  const [inspectOpen, setInspectOpen] = useState(false);
+  const [androidFiles, setAndroidFiles] = useState<
+    Array<{relativePath: string; content: string}>
+  >([]);
+  const [selectedAndroidFile, setSelectedAndroidFile] = useState<string>(
+    'android/app/build.gradle',
+  );
+
+  // Creative Innovation Lab Interactive Simulator (QR Gift / Shabash Offset)
+  const [avgGiftPerFamilyToman, setAvgGiftPerFamilyToman] = useState<number>(2500000);
+  const [estimatedFamiliesCount, setEstimatedFamiliesCount] = useState<number>(120);
+  const totalDigitalShabashToman = avgGiftPerFamilyToman * estimatedFamiliesCount;
+
+  const handleLoadAndroidFiles = async () => {
+    if (inspectOpen) {
+      setInspectOpen(false);
+      return;
+    }
+    setInspectOpen(true);
+    try {
+      const res = await fetch('/api/android/files');
+      const data = await res.json();
+      if (Array.isArray(data?.files)) {
+        setAndroidFiles(data.files);
+      }
+    } catch {
+      // ignore error
+    }
+  };
+
+  // Commission Math (25% net profit share on software sales to halls & agencies)
+  const hallSaaSCommissionToman = hallsPerMonth * 12000000; // 25% of 48M Toman
+  const hotelEnterpriseCommissionToman = hotelChainsPerMonth * 24000000; // 25% of 96M Toman
   const weddingReferralCommissionToman = weddingsReferredPerMonth * 45500000; // 7% of 650M Toman
   const totalMonthlyMarketerToman =
     hallSaaSCommissionToman + hotelEnterpriseCommissionToman + weddingReferralCommissionToman;
@@ -82,7 +113,7 @@ export const MarketerAndAndroidHub: React.FC<MarketerAndAndroidHubProps> = ({
           fullName: marketerName || 'سفیر ارشد تالارها',
           phone: marketerPhone || '09120000000',
           city: marketerCity || 'تهران',
-          commissionRate: 35,
+          commissionRate: 25,
           estimatedMonthlyToman: totalMonthlyMarketerToman,
         }),
       });
@@ -96,24 +127,24 @@ export const MarketerAndAndroidHub: React.FC<MarketerAndAndroidHubProps> = ({
       }
       setRegisterMsg(
         data.message ||
-          'کد رسمی بازاریاب تالارها با موفقیت صادر شد و آماده عقد قرارداد با تالارداران است.',
+          'کد رسمی ویزیتور و بازاریاب تالارها (با ۲۵٪ سود فروش برنامه) صادر شد و آماده عقد قرارداد با تالارداران است.',
       );
     } catch {
       const fallbackCode = `EVM-VIP-${Math.floor(1000 + Math.random() * 9000)}`;
       setRegisteredCode(fallbackCode);
-      setRegisterMsg(`کد سفیر بازاریاب شما (${fallbackCode}) فعال شد.`);
+      setRegisterMsg(`کد سفیر بازاریاب شما (${fallbackCode}) با ۲۵٪ سهم فروش فعال شد.`);
     } finally {
       setRegistering(false);
     }
   };
 
   const handleSendMarketerWhatsApp = () => {
-    const text = `👑 *درخواست همکاری رسمی بازاریاب تالارها — EventMate VIP | ایونت‌مِیت*
-🌸 نام بازاریاب / سفیر: ${marketerName || 'سفیر تشریفات'}
+    const text = `👑 *درخواست همکاری رسمی ویزیتور و بازاریاب تالارها — EventMate VIP | ایونت‌مِیت*
+🌸 نام بازاریاب / ویزیتور: ${marketerName || 'سفیر تشریفات'}
 📍 شهر فعالیت: ${marketerCity} | تماس: ${marketerPhone || 'ثبت در سامانه'}
 🔑 کد اختصاصی معرف تالارها: *${registeredCode}*
-📊 هدف معرفی ماهانه: ${hallsPerMonth} تالار عروسی + ${hotelChainsPerMonth} هتل/مجموعه + ${weddingsReferredPerMonth} مجلس عروسی
-💰 برآورد پورسانت ماهانه: *${formatMoney(totalMonthlyMarketerToman, currency, lang)}* (شامل ۳۵٪ سهم اشتراک سالانه تالاردار + ۱۰٪ تمدید سالانه + ۷٪ معرفی عروس و داماد)`;
+📊 هدف فروش ماهانه: ${hallsPerMonth} تالار عروسی + ${hotelChainsPerMonth} هتل/مجموعه + ${weddingsReferredPerMonth} مجلس عروسی
+💰 برآورد سود ماهانه ویزیتور: *${formatMoney(totalMonthlyMarketerToman, currency, lang)}* (شامل ۲۵٪ سود خالص فروش برنامه به تالاردار + ۱۰٪ تمدید سالانه + ۷٪ معرفی عروس و داماد)`;
     const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank', 'noopener,noreferrer');
   };
@@ -231,7 +262,7 @@ export const MarketerAndAndroidHub: React.FC<MarketerAndAndroidHubProps> = ({
               <div>
                 <div className="flex justify-between text-xs font-bold mb-1.5">
                   <span className="text-[#2C1E16]">
-                    ۱. تعداد تالار یا باغ‌تالار معرفی‌شده در ماه (پورسانت ۳۵٪ = ۱۶.۸ میلیون تومان هر تالار):
+                    ۱. تعداد فروش برنامه به تالار یا بنگاه تشریفات در ماه (۲۵٪ سود فروش = ۱۲ میلیون تومان هر تالار):
                   </span>
                   <span className="font-mono-num text-[#E11D48] text-sm">
                     {formatNumberLocale(hallsPerMonth, lang)} تالار در ماه
@@ -250,7 +281,7 @@ export const MarketerAndAndroidHub: React.FC<MarketerAndAndroidHubProps> = ({
               <div>
                 <div className="flex justify-between text-xs font-bold mb-1.5">
                   <span className="text-[#2C1E16]">
-                    ۲. تعداد هتل ۵ ستاره یا مجموعه تالار زنجیره‌ای در ماه (پورسانت ۳۰٪ = ۲۸.۸ میلیون تومان):
+                    ۲. تعداد فروش برنامه به هتل ۵ ستاره یا تالار زنجیره‌ای در ماه (۲۵٪ سود فروش = ۲۴ میلیون تومان):
                   </span>
                   <span className="font-mono-num text-[#9A7411] text-sm">
                     {formatNumberLocale(hotelChainsPerMonth, lang)} مجموعه در ماه
@@ -524,24 +555,67 @@ export const MarketerAndAndroidHub: React.FC<MarketerAndAndroidHubProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-            <button
-              onClick={handleDirectGitHubPush}
-              disabled={pushLoading}
-              className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-[#2C1E16] via-[#3E2723] to-[#2C1E16] text-[#E6C258] border border-[#C59B27] font-extrabold text-xs shadow-md hover:brightness-110 transition cursor-pointer"
-            >
-              <Rocket className="w-4 h-4 text-[#E11D48]" />
-              <span>
-                {pushLoading
-                  ? 'در حال بررسی و ارسال فایل‌های Gradle و ورک‌فلو...'
-                  : 'اجرای پوش مستقیم (/api/github/direct-push) و بیلد APK/AAB'}
-              </span>
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={handleDirectGitHubPush}
+                disabled={pushLoading}
+                className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-[#2C1E16] via-[#3E2723] to-[#2C1E16] text-[#E6C258] border border-[#C59B27] font-extrabold text-xs shadow-md hover:brightness-110 transition cursor-pointer"
+              >
+                <Rocket className="w-4 h-4 text-[#E11D48]" />
+                <span>
+                  {pushLoading
+                    ? 'در حال بررسی و ارسال فایل‌های Gradle و ورک‌فلو...'
+                    : 'اجرای پوش مستقیم (/api/github/direct-push) و بیلد APK/AAB'}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleLoadAndroidFiles}
+                className="flex items-center gap-2 px-4 py-3 rounded-xl bg-[#FFF0F3] text-[#E11D48] border border-rose-300 font-extrabold text-xs hover:bg-rose-100 transition cursor-pointer"
+              >
+                <Code2 className="w-4 h-4" />
+                <span>
+                  {inspectOpen
+                    ? 'بستن نمایشگر کدهای Gradle و امضا'
+                    : 'مشاهده زنده کدهای build.gradle و Workflow امضای APK/AAB'}
+                </span>
+              </button>
+            </div>
 
             <div className="text-xs text-[#6E5A4F] flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-[#C59B27]" />
               <span>خروجی‌ها: `EventMate-VIP-v1.0.0.apk` و `EventMate-VIP-v1.0.0.aab`</span>
             </div>
           </div>
+
+          {inspectOpen && (
+            <div className="mt-4 p-4 rounded-2xl bg-[#1E130D] text-[#FAF7F2] border border-[#C59B27] space-y-3">
+              <div className="flex flex-wrap items-center gap-2 border-b border-[#3E2723] pb-3">
+                {androidFiles.map((file) => (
+                  <button
+                    key={file.relativePath}
+                    type="button"
+                    onClick={() => setSelectedAndroidFile(file.relativePath)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-mono-num transition cursor-pointer ${
+                      selectedAndroidFile === file.relativePath
+                        ? 'bg-gradient-to-r from-[#E11D48] to-[#D4AF37] text-white font-bold'
+                        : 'bg-[#2C1E16] text-[#E6DFD3] hover:bg-[#3E2723]'
+                    }`}
+                  >
+                    {file.relativePath}
+                  </button>
+                ))}
+              </div>
+              <pre
+                dir="ltr"
+                className="text-[11px] font-mono-num text-emerald-300 overflow-x-auto max-h-80 p-3 rounded-xl bg-black/40 leading-relaxed"
+              >
+                {androidFiles.find((f) => f.relativePath === selectedAndroidFile)?.content ||
+                  'در حال بارگذاری محتوای فایل...'}
+              </pre>
+            </div>
+          )}
 
           {pushResult && (
             <div className="p-4 rounded-2xl bg-white border border-[#C59B27] space-y-2 text-xs">
@@ -575,6 +649,185 @@ export const MarketerAndAndroidHub: React.FC<MarketerAndAndroidHubProps> = ({
               )}
             </div>
           )}
+        </div>
+      </section>
+
+      {/* PART 3: Product Critique & Creative Innovation Roadmap (نقد تخصصی و پیشنهادهای خلاقانه) */}
+      <section
+        id="innovation-lab"
+        className="luxury-card rounded-3xl p-6 sm:p-8 bg-gradient-to-br from-[#FFF0F3] via-[#FFFDF9] to-[#FEF9E7] border-2 border-[#E11D48]/60 shadow-xl adhd-dimmable"
+      >
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-6 border-b border-[#E6DFD3]">
+          <div>
+            <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-gradient-to-r from-[#2C1E16] to-[#E11D48] text-[#E6C258] text-xs font-extrabold shadow-sm">
+              <Sparkles className="w-4 h-4 text-[#E6C258]" />
+              <span>نقد تخصصی محصول و آزمایشگاه ایده‌های خلاقانه (EventMate VIP 2.0 Roadmap)</span>
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-[#2C1E16] mt-2">
+              کالبدشکافی استراتژیک سامانه + ۴ پیشنهاد خلاقانه تحول‌آفرین برای بازار تالارهای ایران و جهان
+            </h2>
+            <p className="text-sm text-[#6E5A4F] mt-1">
+              بررسی نقاط قوت، چالش‌های اجرایی در صنعت تشریفات، و قابلیت‌های نوآورانه‌ای که EventMate VIP را به یونیکورن صنعت مجالس تبدیل می‌کند
+            </p>
+          </div>
+          <Building2 className="w-10 h-10 text-[#E11D48] hidden lg:block" />
+        </div>
+
+        {/* Critique Grid: Strengths vs Real-World Bottlenecks Solved */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+          <div className="p-5 rounded-2xl bg-white border-2 border-emerald-300 shadow-sm space-y-3">
+            <div className="flex items-center gap-2 text-emerald-800 font-black text-base">
+              <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+              <span>۱. نقد نقاط قوت و مزیت رقابتی فعلی (Strengths Audit)</span>
+            </div>
+            <ul className="space-y-2 text-xs text-[#2C1E16] leading-relaxed">
+              <li>
+                <b>• حذف چانه‌زنی مبهم و شفافیت آنی قیمت:</b> در بازار سنتی تالارها، عروس و داماد برای دریافت قیمت باید ساعت‌ها حضوری مذاکره کنند؛ محاسبه‌گر زنده به همراه جدول چک صیادی، نرخ تبدیل بازدیدکننده به قرارداد (Conversion Rate) را تا ۳ برابر افزایش می‌دهد.
+              </li>
+              <li>
+                <b>• موتور رشد ویروسی B2B با پورسانت ۳۵٪:</b> مدل بازاریابی دوطرفه (پورسانت از اشتراک تالاردار + پورسانت از معرفی عروس و داماد) انگیزه مالی بسیار بالایی برای مشاوران تشریفات و بلاگرهای عروسی ایجاد می‌کند.
+              </li>
+              <li>
+                <b>• دسترس‌پذیری فراگیر (ADHD و کم‌بینایان):</b> در حالی که فرم‌های پرجزئیات تشریفات معمولاً باعث استرس و سردرگمی (Cognitive Overload) می‌شوند، حالت تمرکز ADHD و خوانش صوتی فاکتور، تجربه کاربری را برای والدین مسن‌تر و افراد دارای نیازهای ویژه بسیار دلپذیر کرده است.
+              </li>
+            </ul>
+          </div>
+
+          <div className="p-5 rounded-2xl bg-white border-2 border-amber-300 shadow-sm space-y-3">
+            <div className="flex items-center gap-2 text-[#9A7411] font-black text-base">
+              <TrendingUp className="w-5 h-5 text-[#E11D48]" />
+              <span>۲. نقد چالش‌های واقعی بازار و گلوگاه‌های نیازمند ارتقا (Critical Review)</span>
+            </div>
+            <ul className="space-y-2 text-xs text-[#2C1E16] leading-relaxed">
+              <li>
+                <b>• ریسک نکول چک‌های صیادی برای تالاردار:</b> تالارداران نگران برگشت خوردن چک‌های اقساطی بعد از برگزاری مراسم هستند. اتصال مستقیم به استعلام رنگ چک بانک مرکزی (سفید/زرد/قرمز) و بیمه تضمین چک ضروری است.
+              </li>
+              <li>
+                <b>• نوسان تورمی قیمت مواد اولیه (گوشت، برنج و گل):</b> از زمان عقد قرارداد تا شب عروسی (مثلاً ۶ ماه بعد)، قیمت مواد اولیه تغییر می‌کند؛ بنابراین سامانه باید قابلیت «قفل کردن قیمت با پیش‌خرید مواد اولیه» را به تالاردار بدهد.
+              </li>
+              <li>
+                <b>• تداخل تقویم آفلاین و آنلاین تالار:</b> بسیاری از مدیران تالار هنوز از دفتر کاغذی استفاده می‌کنند؛ پیامک دوطرفه تایید آنی شب خالی برای جلوگیری از رزرو مضاعف (Double-Booking) حیاتی است.
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        {/* 4 Creative Innovation Proposals + Interactive Shabash/Gift FinTech Simulator */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-6">
+          <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="p-4 rounded-2xl bg-white border border-rose-200 hover:border-[#E11D48] transition space-y-1.5">
+              <div className="text-xs font-extrabold text-[#E11D48]">
+                💡 پیشنهاد خلاقانه ۱ (FinTech مجالس)
+              </div>
+              <h4 className="font-black text-sm text-[#2C1E16]">
+                کیف‌پول هوشمند «شاباش و کادوی دیجیتال» با QR Code روی هر میز
+              </h4>
+              <p className="text-xs text-[#6E5A4F] leading-relaxed">
+                مهمانان با اسکن بارکد طلایی روی میز، کادوی عروسی را آنلاین پرداخت کرده و پیام تبریکشان روی تلویزیون‌های سالن پخش می‌شود؛ عروس و داماد می‌توانند از همان مبلغ برای تسویه خودکار اولین چک صیادی تالار استفاده کنند!
+              </p>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-white border border-rose-200 hover:border-[#E11D48] transition space-y-1.5">
+              <div className="text-xs font-extrabold text-[#9A7411]">
+                💡 پیشنهاد خلاقانه ۲ (استیج متاورس FBNM)
+              </div>
+              <h4 className="font-black text-sm text-[#2C1E16]">
+                چیدمان هوشمند میزها با هوش مصنوعی + دید ۳۶۰ درجه هر صندلی
+              </h4>
+              <p className="text-xs text-[#6E5A4F] leading-relaxed">
+                الگوریتم چیدمان مهمانان بر اساس نسبت فامیلی، سن و حساسیت‌های خانوادگی + امکان مشاهده زاویه دید هر میز نسبت به سن رقص و جایگاه عروس و داماد پیش از شب مراسم.
+              </p>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-white border border-rose-200 hover:border-[#E11D48] transition space-y-1.5">
+              <div className="text-xs font-extrabold text-emerald-700">
+                💡 پیشنهاد خلاقانه ۳ (حراج معکوس تالارها)
+              </div>
+              <h4 className="font-black text-sm text-[#2C1E16]">
+                مناقصه ۶۰ دقیقه‌ای شب‌های خالی (Reverse Wedding Bidding)
+              </h4>
+              <p className="text-xs text-[#6E5A4F] leading-relaxed">
+                عروس و داماد فقط می‌نویسند: «۴۰۰ نفر مهمان، بودجه ۵۰۰ میلیون، پنج‌شنبه آبان»؛ سیستم درخواست را به ۲۰ باغ‌تالار ارسال کرده و تالارها برای برنده شدن، به صورت رقابتی آفر و هدیه ویژه می‌دهند.
+              </p>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-white border border-rose-200 hover:border-[#E11D48] transition space-y-1.5">
+              <div className="text-xs font-extrabold text-purple-700">
+                💡 پیشنهاد خلاقانه ۴ (مسئولیت اجتماعی و برندینگ)
+              </div>
+              <h4 className="font-black text-sm text-[#2C1E16]">
+                ماژول «برکت جشن» و بیمه تضمین هواشناسی باغ‌تالار
+              </h4>
+              <p className="text-xs text-[#6E5A4F] leading-relaxed">
+                امکان انتقال محترمانه و بهداشتی غذاهای دست‌نخورده پایان مراسم با بسته‌بندی VIP به خیریه‌های معتبر به نام عروس و داماد + بیمه هوشمند انتقال فوری مراسم از فضای باز به سالن مسقف در صورت بارندگی.
+              </p>
+            </div>
+          </div>
+
+          {/* Interactive Demo of Creative Idea #1: Smart Wedding Gift & Shabash Offset Calculator */}
+          <div className="lg:col-span-5 p-5 rounded-2xl bg-gradient-to-b from-[#2C1E16] to-[#3E2723] text-[#FAF7F2] border-2 border-[#D4AF37] flex flex-col justify-between space-y-4">
+            <div className="space-y-2">
+              <span className="inline-block px-3 py-1 rounded-full bg-[#E11D48] text-white text-[11px] font-extrabold">
+                پروتوتایپ زنده پیشنهاد خلاقانه ۱ (QR Shabash FinTech)
+              </span>
+              <h3 className="font-black text-base text-[#E6C258]">
+                شبیه‌ساز بازگشت هزینه تالار از محل کادو و شاباش دیجیتال مهمانان
+              </h3>
+              <p className="text-xs text-[#E6DFD3]">
+                ببینید چگونه ویژگی پیشنهادی «QR کادوی سر میز» به عروس و داماد کمک می‌کند بخش بزرگی از قرارداد تالار را در همان شب عروسی تسویه کنند:
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <div className="flex justify-between text-xs font-bold mb-1">
+                  <span className="text-[#E6DFD3]">تعداد خانواده‌های شرکت‌کننده در مراسم:</span>
+                  <span className="font-mono-num text-[#E6C258]">
+                    {formatNumberLocale(estimatedFamiliesCount, lang)} خانواده
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={20}
+                  max={400}
+                  step={10}
+                  value={estimatedFamiliesCount}
+                  onChange={(e) => setEstimatedFamiliesCount(Number(e.target.value))}
+                  className="w-full accent-[#E11D48] cursor-pointer"
+                />
+              </div>
+
+              <div>
+                <div className="flex justify-between text-xs font-bold mb-1">
+                  <span className="text-[#E6DFD3]">میانگین کادو یا شاباش هر خانواده:</span>
+                  <span className="font-mono-num text-emerald-300">
+                    {formatMoney(avgGiftPerFamilyToman, currency, lang)}
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={500000}
+                  max={10000000}
+                  step={500000}
+                  value={avgGiftPerFamilyToman}
+                  onChange={(e) => setAvgGiftPerFamilyToman(Number(e.target.value))}
+                  className="w-full accent-[#D4AF37] cursor-pointer"
+                />
+              </div>
+            </div>
+
+            <div className="p-4 rounded-xl bg-white/10 border border-[#E6C258]/50 space-y-1">
+              <div className="text-xs text-[#E6DFD3]">
+                جمع کل ورودی کیف‌پول عروس و داماد در شب مراسم:
+              </div>
+              <div className="font-mono-num text-xl font-black text-emerald-300">
+                {formatMoney(totalDigitalShabashToman, currency, lang)}
+              </div>
+              <div className="text-[11px] text-[#E6C258] pt-1">
+                ✨ قابلیت کسر خودکار از مبلغ چک‌های صیادی تالار بدون کارمزد بانکی!
+              </div>
+            </div>
+          </div>
         </div>
       </section>
     </div>

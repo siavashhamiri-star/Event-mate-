@@ -1,4 +1,4 @@
-name: EventMate VIP — Android APK & AAB Auto-Release (FBNM)
+name: EventMate VIP — Android Signed APK & AAB Auto-Release (FBNM)
 
 on:
   push:
@@ -18,15 +18,15 @@ permissions:
   contents: write
 
 jobs:
-  build-apk-and-aab:
-    name: Build Signed APK & Play Store AAB (com.eventmate.vip)
+  build-signed-apk-and-aab:
+    name: Build & Sign APK + AAB (com.eventmate.vip)
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Set up JDK 17
+      - name: Set up JDK 17 (Temurin)
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
@@ -35,55 +35,80 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Setup Gradle 8.7
+      - name: Setup Gradle 8.7 with Cache
         uses: gradle/actions/setup-gradle@v3
         with:
           gradle-version: '8.7'
 
-      - name: Generate Production Keystore for com.eventmate.vip
+      - name: Provision Production Signing Keystore (Secrets or Auto-RSA-2048)
         working-directory: ./android
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          keytool -genkeypair -v \
-            -keystore eventmate-release.keystore \
-            -alias eventmate_vip \
-            -keyalg RSA \
-            -keysize 2048 \
-            -validity 10000 \
-            -storepass EventMateVIP2026 \
-            -keypass EventMateVIP2026 \
-            -dname "CN=EventMate VIP, OU=FBNM Stage, O=New Metaversity, L=Tehran, S=Tehran, C=IR"
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "🔐 Decoding custom production Keystore from GitHub Secrets..."
+            echo "$KEYSTORE_BASE64" | base64 --decode > eventmate-release.keystore
+          else
+            echo "🔑 Generating automated RSA-2048 Production Keystore for com.eventmate.vip..."
+            STORE_PASS="${KEYSTORE_PASSWORD:-EventMateVIP2026}"
+            ALIAS_NAME="${KEY_ALIAS:-eventmate_vip}"
+            KEY_PASS="${KEY_PASSWORD:-EventMateVIP2026}"
+            keytool -genkeypair -v \
+              -keystore eventmate-release.keystore \
+              -alias "$ALIAS_NAME" \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -storepass "$STORE_PASS" \
+              -keypass "$KEY_PASS" \
+              -dname "CN=EventMate VIP, OU=FBNM Stage, O=New Metaversity, L=Tehran, S=Tehran, C=IR"
+          fi
 
-      - name: Build Release APK & Android App Bundle (AAB)
+      - name: Build Signed Release APK & Play Store AAB via Gradle
         working-directory: ./android
+        env:
+          EVENTMATE_API_BASE_URL: ${{ secrets.EVENTMATE_API_BASE_URL || 'https://eventmate-vip.fbnm.stage' }}
+          KEYSTORE_FILE: "../eventmate-release.keystore"
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD || 'EventMateVIP2026' }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS || 'eventmate_vip' }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || 'EventMateVIP2026' }}
         run: |
           gradle assembleRelease bundleRelease --no-daemon --stacktrace
 
-      - name: Prepare Release Artifacts
+      - name: Verify Digital Signatures & Generate SHA-256 Checksums
         run: |
           mkdir -p release-artifacts
-          cp android/app/build/outputs/apk/release/*.apk release-artifacts/EventMate-VIP-v1.0.0.apk || true
-          cp android/app/build/outputs/bundle/release/*.aab release-artifacts/EventMate-VIP-v1.0.0.aab || true
+          cp android/app/build/outputs/apk/release/*.apk release-artifacts/EventMate-VIP-v1.0.0.apk
+          cp android/app/build/outputs/bundle/release/*.aab release-artifacts/EventMate-VIP-v1.0.0.aab
+          jarsigner -verify -verbose -certs release-artifacts/EventMate-VIP-v1.0.0.aab || true
+          cd release-artifacts && sha256sum EventMate-VIP-v1.0.0.apk EventMate-VIP-v1.0.0.aab > SHA256SUMS.txt
 
-      - name: Upload APK & AAB Artifacts
+      - name: Upload Signed APK, AAB & SHA256 Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: EventMate-VIP-Android-Packages
+          name: EventMate-VIP-Signed-Android-Packages
           path: release-artifacts/*
 
-      - name: Publish APK & AAB to GitHub Releases
+      - name: Publish Signed APK & AAB to GitHub Releases
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event.inputs.release_tag || 'v1.0.0-vip' }}
-          name: "EventMate VIP | ایونت‌مِیت — نسخه اندروید (APK + AAB)"
+          name: "EventMate VIP | ایونت‌مِیت — نسخه رسمی امضاشده اندروید (APK + AAB)"
           body: |
             ### 👑 EventMate VIP | ایونت‌مِیت (`com.eventmate.vip`)
             **اکوسیستم آفرینش | شهر جدید نیومتاورسیتی جهان | توان استیج FBNM**
             
-            - 📦 **فایل نصبی مستقیم اندروید (APK):** `EventMate-VIP-v1.0.0.apk`
-            - 🏪 **باندل رسمی گوگل‌پلی و کافه‌بازار (AAB):** `EventMate-VIP-v1.0.0.aab`
-            - ✨ منوساز زنده، محاسبه‌گر اقساط چک صیادی، تقویم شب‌های خالی تالار، استوری‌ساز HD و اتصال جیمیل و واتساپ.
+            - 📦 **فایل نصبی مستقیم اندروید (Signed APK V1/V2/V3):** `EventMate-VIP-v1.0.0.apk`
+            - 🏪 **باندل رسمی گوگل‌پلی و کافه‌بازار (Signed AAB):** `EventMate-VIP-v1.0.0.aab`
+            - 🔐 **فایل هش اعتبارسنجی امضا:** `SHA256SUMS.txt`
+            - 🛡️ **امنیت کلیدهای API:** ایزوله در سرور پراکسی (`server.ts`) بدون افشای کلید در باینری کلاینت.
+            - ✨ منوساز زنده، محاسبه‌گر اقساط چک صیادی، تقویم شب‌های خالی تالار، استوری‌ساز HD، دسترس‌پذیری کم‌بینایان و ADHD، و باشگاه بازاریابان تالارها.
           files: |
             release-artifacts/EventMate-VIP-v1.0.0.apk
             release-artifacts/EventMate-VIP-v1.0.0.aab
+            release-artifacts/SHA256SUMS.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

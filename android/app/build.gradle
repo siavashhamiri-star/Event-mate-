@@ -2,9 +2,25 @@ plugins {
     id 'com.android.application'
 }
 
+// Secure API & Signing Environment Automation Helper
+def getSecureEnvOrProp = { String envKey, String propKey, String fallbackValue ->
+    def envVal = System.getenv(envKey)
+    if (envVal != null && !envVal.trim().isEmpty()) {
+        return envVal.trim()
+    }
+    if (project.hasProperty(propKey)) {
+        return project.property(propKey).toString().trim()
+    }
+    return fallbackValue
+}
+
 android {
     namespace "com.eventmate.vip"
     compileSdk 34
+
+    buildFeatures {
+        buildConfig true
+    }
 
     defaultConfig {
         applicationId "com.eventmate.vip"
@@ -12,14 +28,29 @@ android {
         targetSdk 34
         versionCode 1
         versionName "1.0.0"
+
+        // Automated Server Proxy Endpoint (Private API Keys remain 100% isolated in server.ts)
+        def apiBaseUrl = getSecureEnvOrProp("EVENTMATE_API_BASE_URL", "EVENTMATE_API_BASE_URL", "https://eventmate-vip.fbnm.stage")
+        def publicClientId = getSecureEnvOrProp("GOOGLE_OAUTH_CLIENT_ID", "GOOGLE_OAUTH_CLIENT_ID", "configured-via-server-proxy")
+
+        buildConfigField "String", "API_BASE_URL", "\"${apiBaseUrl}\""
+        buildConfigField "String", "SERVER_PROXY_CONCIERGE", "\"${apiBaseUrl}/api/concierge\""
+        buildConfigField "String", "SERVER_PROXY_RATES", "\"${apiBaseUrl}/api/rates\""
+        buildConfigField "String", "PUBLIC_OAUTH_CLIENT_ID", "\"${publicClientId}\""
+
+        manifestPlaceholders = [
+            appHostUrl: apiBaseUrl
+        ]
     }
 
     signingConfigs {
         release {
-            storeFile file(System.getenv("KEYSTORE_FILE") ?: "../eventmate-release.keystore")
-            storePassword System.getenv("KEYSTORE_PASSWORD") ?: "EventMateVIP2026"
-            keyAlias System.getenv("KEY_ALIAS") ?: "eventmate_vip"
-            keyPassword System.getenv("KEY_PASSWORD") ?: "EventMateVIP2026"
+            // Supports automated GitHub Secrets (KEYSTORE_FILE / KEYSTORE_PASSWORD / KEY_ALIAS / KEY_PASSWORD)
+            // with automatic zero-config fallback to CI-generated RSA-2048 keystore
+            storeFile file(getSecureEnvOrProp("KEYSTORE_FILE", "RELEASE_STORE_FILE", "../eventmate-release.keystore"))
+            storePassword getSecureEnvOrProp("KEYSTORE_PASSWORD", "RELEASE_STORE_PASSWORD", "EventMateVIP2026")
+            keyAlias getSecureEnvOrProp("KEY_ALIAS", "RELEASE_KEY_ALIAS", "eventmate_vip")
+            keyPassword getSecureEnvOrProp("KEY_PASSWORD", "RELEASE_KEY_PASSWORD", "EventMateVIP2026")
             enableV1Signing true
             enableV2Signing true
             enableV3Signing true
