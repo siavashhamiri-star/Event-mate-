@@ -1,0 +1,83 @@
+name: Build Signed APK & AAB + Web Bundle (Afrina FeeBan VIP | آفرینا فی‌بان)
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build-signed-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 1. Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: 2. Setup Node.js 20 & Build Bilingual FA/EN Web Bundle
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Dependencies & Build Web App
+        run: |
+          npm install
+          npm run build
+
+      - name: 3. Set up JDK 17 for Android Gradle
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: 4. Setup Gradle 8.5
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '8.5'
+
+      - name: 5. Automated Keystore Generation for Signed Release (Myket / CafeBazaar / Google Play)
+        working-directory: ./android/app
+        run: |
+          if [ ! -f release-keystore.jks ]; then
+            keytool -genkeypair -v \
+              -keystore release-keystore.jks \
+              -alias afrinavip \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -storepass afrina123456 \
+              -keypass afrina123456 \
+              -dname "CN=Able Way City Afrina, OU=Afrina FeeBan VIP, O=Afrina Ecosystem, L=Tehran, ST=Tehran, C=IR"
+          fi
+
+      - name: 6. Build Signed Release APK (For Myket & CafeBazaar)
+        working-directory: ./android
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD || 'afrina123456' }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS || 'afrinavip' }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || 'afrina123456' }}
+        run: gradle assembleRelease --no-daemon
+
+      - name: 7. Build Signed Release App Bundle AAB (For Google Play Console)
+        working-directory: ./android
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD || 'afrina123456' }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS || 'afrinavip' }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || 'afrina123456' }}
+        run: gradle bundleRelease --no-daemon
+
+      - name: 8. Upload Signed APK (Myket & CafeBazaar Ready)
+        uses: actions/upload-artifact@v4
+        with:
+          name: Afrina-FeeBan-VIP-Signed-APK-Myket-Bazaar
+          path: android/app/build/outputs/apk/release/*.apk
+
+      - name: 9. Upload Signed App Bundle AAB (Google Play Ready)
+        uses: actions/upload-artifact@v4
+        with:
+          name: Afrina-FeeBan-VIP-Signed-AAB-GooglePlay
+          path: android/app/build/outputs/bundle/release/*.aab
+
+      - name: 10. Upload Digital Keystore Backup (.jks)
+        uses: actions/upload-artifact@v4
+        with:
+          name: Afrina-FeeBan-Release-Keystore-JKS
+          path: android/app/release-keystore.jks
